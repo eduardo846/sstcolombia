@@ -20,6 +20,12 @@ La API queda en http://localhost:3000 (documentación OpenAPI en la raíz).
 
 El workflow de GitHub Actions en `.github/workflows/ci.yml` construye y levanta los servicios con Docker Compose en cada push y pull request, y comprueba que la API y el frontend respondan. También se puede ejecutar manualmente desde la pestaña **Actions** con **Run workflow**. Usa credenciales temporales de prueba; no despliega la aplicación ni conserva los datos al terminar.
 
+## Despliegue del frontend en Netlify
+
+El archivo `netlify.toml` configura el build de React y el fallback de rutas de la SPA. El workflow `.github/workflows/netlify-deploy.yml` publica automáticamente la rama `deployment` en el sitio Netlify configurado y también permite un despliegue manual. Configura en GitHub los secretos de repositorio `NETLIFY_AUTH_TOKEN` y `NETLIFY_SITE_ID`, y la variable de repositorio `VITE_API_URL` con la URL HTTPS pública de PostgREST, sin una barra final (por ejemplo, `https://api.ejemplo.com`). El frontend no incluye el backend: PostgreSQL y PostgREST deben estar desplegados por separado, con CORS habilitado para el dominio de Netlify. No guardes tokens en el repositorio ni los compartas en mensajes.
+
+No cargues datos reales ni uses esta instancia para información de salud laboral hasta configurar y verificar el backend, sus credenciales, HTTPS, respaldos y controles de acceso. Las credenciales de demostración incluidas en el repositorio son solo para pruebas.
+
 > Para producción elimina `db/04_demo.sql` **antes** del primer arranque. Los scripts de `db/` solo se ejecutan cuando el volumen `pgdata` está vacío; para reinstalar desde cero: `docker compose down -v`.
 
 ## Arquitectura
