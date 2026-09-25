@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: sgsst-api
+    name: sgsst-api-virginia
     runtime: docker
     plan: free
     region: virginia
