@@ -1,0 +1,391 @@
+// Configuración declarativa de cada módulo del SG-SST.
+// t: text | textarea | number | date | time | bool | select | ref
+// list: se muestra en la tabla · ro: solo lectura (calculado en la base)
+// tone: función valor -> 'rojo' | 'amarillo' | 'verde' | 'gris' para resaltar
+
+const opts = (...pares) => pares.map(p => (Array.isArray(p) ? p : [p, p]));
+
+const SI_NO = v => (v ? 'verde' : 'gris');
+const tonoRiesgo = v => ({ I: 'rojo', II: 'amarillo', III: 'gris', IV: 'verde' }[v]);
+const tonoEstado = v => ({
+  ejecutada: 'verde', cerrada: 'verde', a_tiempo: 'verde', cumple: 'verde', apto: 'verde',
+  vencido: 'rojo', vencida: 'rojo', no_cumple: 'rojo', no_apto: 'rojo', extemporaneo: 'rojo', extemporanea: 'rojo',
+  pendiente: 'amarillo', parcial: 'amarillo', en_proceso: 'amarillo', reprogramada: 'amarillo',
+  apto_con_restricciones: 'amarillo', en_ejecucion: 'amarillo', abierta: 'amarillo',
+}[v]);
+
+export const REFS = {
+  trabajadores: { select: 'id,nombres,apellidos,documento', order: 'apellidos', label: r => `${r.apellidos} ${r.nombres} (${r.documento})` },
+  capacitaciones: { select: 'id,fecha,tema', order: 'fecha.desc', label: r => `${r.fecha} ${r.tema}` },
+  comites: { select: 'id,tipo,fecha_conformacion', order: 'fecha_conformacion.desc', label: r => `${r.tipo} desde ${r.fecha_conformacion}` },
+  eventos: { select: 'id,fecha_evento,tipo,descripcion', order: 'fecha_evento.desc', label: r => `${r.fecha_evento} ${r.tipo}: ${r.descripcion.slice(0, 40)}` },
+  estandares_0312: { key: 'codigo', select: 'codigo,descripcion', order: 'orden', label: r => `${r.codigo} ${r.descripcion.slice(0, 70)}` },
+};
+
+const trabajador = { k: 'trabajador_id', l: 'Trabajador', t: 'ref', ref: 'trabajadores', list: true };
+
+export const RESOURCES = {
+  plan_anual: {
+    title: 'Plan anual de trabajo', ciclo: 'P',
+    norma: 'Res. 0312/2019 estándar 2.4.1; Dec. 1072/2015 Art. 2.2.4.6.8 num. 7',
+    order: 'fecha_programada',
+    fields: [
+      { k: 'anio', l: 'Año', t: 'number', req: true, list: true, def: () => new Date().getFullYear() },
+      { k: 'actividad', l: 'Actividad', t: 'textarea', req: true, list: true },
+      { k: 'estandar_codigo', l: 'Estándar', t: 'ref', ref: 'estandares_0312', list: true, short: true },
+      { k: 'responsable', l: 'Responsable', t: 'text', list: true },
+      { k: 'recursos', l: 'Recursos', t: 'textarea' },
+      { k: 'fecha_programada', l: 'Programada', t: 'date', req: true, list: true },
+      { k: 'fecha_ejecucion', l: 'Ejecutada', t: 'date', list: true },
+      { k: 'estado', l: 'Estado', t: 'select', list: true, def: 'programada', tone: tonoEstado,
+        options: opts(['programada', 'Programada'], ['en_ejecucion', 'En ejecución'], ['ejecutada', 'Ejecutada'], ['reprogramada', 'Reprogramada'], ['cancelada', 'Cancelada']) },
+      { k: 'observaciones', l: 'Observaciones', t: 'textarea' },
+    ],
+  },
+
+  matriz_legal: {
+    title: 'Matriz legal', ciclo: 'P',
+    norma: 'Res. 0312/2019 estándar 2.7.1; Dec. 1072/2015 Art. 2.2.4.6.8',
+    order: 'anio.desc',
+    toolbar: [{ label: 'Cargar normativa base', rpc: 'cargar_matriz_legal_base',
+      confirm: 'Se agregarán a tu matriz las normas del catálogo que aún no tengas. ¿Continuar?',
+      done: n => `${n} requisitos agregados a la matriz.` }],
+    fields: [
+      { k: 'tipo', l: 'Tipo', t: 'select', req: true, list: true,
+        options: opts('Ley', 'Decreto', 'Resolución', 'Circular', 'Guía técnica', 'Norma técnica', 'Otro') },
+      { k: 'numero', l: 'Número', t: 'text', req: true, list: true },
+      { k: 'anio', l: 'Año', t: 'number', req: true, list: true },
+      { k: 'emisor', l: 'Emisor', t: 'text' },
+      { k: 'tema', l: 'Tema', t: 'text', list: true },
+      { k: 'requisito', l: 'Requisito aplicable', t: 'textarea', req: true, list: true },
+      { k: 'evidencia', l: 'Evidencia de cumplimiento', t: 'textarea' },
+      { k: 'cumplimiento', l: 'Cumplimiento', t: 'select', list: true, def: 'no_evaluado', tone: tonoEstado,
+        options: opts(['cumple', 'Cumple'], ['parcial', 'Parcial'], ['no_cumple', 'No cumple'], ['no_aplica', 'No aplica'], ['no_evaluado', 'Sin evaluar']) },
+      { k: 'responsable', l: 'Responsable', t: 'text' },
+      { k: 'fecha_verificacion', l: 'Verificado', t: 'date', list: true },
+    ],
+  },
+
+  documentos: {
+    title: 'Documentos del sistema', ciclo: 'P',
+    norma: 'Dec. 1072/2015 Arts. 2.2.4.6.12 y 2.2.4.6.13 (retención mínima de 20 años); estándar 2.5.1',
+    order: 'codigo',
+    fields: [
+      { k: 'codigo', l: 'Código', t: 'text', req: true, list: true },
+      { k: 'nombre', l: 'Nombre', t: 'text', req: true, list: true },
+      { k: 'tipo', l: 'Tipo', t: 'select', req: true, list: true,
+        options: opts(['politica', 'Política'], ['objetivos', 'Objetivos'], ['manual', 'Manual'], ['procedimiento', 'Procedimiento'],
+          ['programa', 'Programa'], ['plan', 'Plan'], ['formato', 'Formato'], ['registro', 'Registro'], ['matriz', 'Matriz'], ['informe', 'Informe'], ['otro', 'Otro']) },
+      { k: 'version', l: 'Versión', t: 'text', list: true, def: '1' },
+      { k: 'fecha_aprobacion', l: 'Aprobado', t: 'date', list: true },
+      { k: 'aprobado_por', l: 'Aprobado por', t: 'text' },
+      { k: 'retencion_anios', l: 'Retención (años)', t: 'number', def: 20 },
+      { k: 'ubicacion', l: 'Ubicación o enlace', t: 'text' },
+      { k: 'proxima_revision', l: 'Próxima revisión', t: 'date', list: true },
+    ],
+  },
+
+  comites: {
+    title: 'Comités y brigada', ciclo: 'P', listFrom: 'v_comites',
+    norma: 'Res. 2013/1986 (COPASST); Res. 652 y 1356/2012 (Convivencia); estándares 1.1.6, 1.1.8 y 5.1.2',
+    order: 'fecha_conformacion.desc',
+    fields: [
+      { k: 'tipo', l: 'Comité', t: 'select', req: true, list: true,
+        options: opts(['COPASST', 'COPASST'], ['VIGIA_SST', 'Vigía SST'], ['CONVIVENCIA', 'Comité de Convivencia'], ['VIGIA_CONVIVENCIA', 'Vigía de Convivencia'], ['BRIGADA', 'Brigada de emergencias']) },
+      { k: 'fecha_conformacion', l: 'Conformado', t: 'date', req: true, list: true },
+      { k: 'fecha_vencimiento', l: 'Vence', t: 'date', ro: true, list: true },
+      { k: 'miembros', l: 'Miembros', t: 'number', ro: true, list: true },
+      { k: 'ultima_reunion', l: 'Última reunión', t: 'date', ro: true, list: true },
+      { k: 'vencido', l: 'Vencido', t: 'bool', ro: true, list: true, tone: v => (v ? 'rojo' : 'verde') },
+      { k: 'acta', l: 'Acta de conformación', t: 'text' },
+      { k: 'observaciones', l: 'Observaciones', t: 'textarea' },
+    ],
+  },
+
+  comite_miembros: {
+    title: 'Integrantes de comités', ciclo: 'P',
+    norma: 'Res. 2013/1986 Art. 2 (paridad empleador–trabajadores)',
+    fields: [
+      { k: 'comite_id', l: 'Comité', t: 'ref', ref: 'comites', req: true, list: true },
+      { ...trabajador, req: true },
+      { k: 'rol', l: 'Rol', t: 'select', req: true, list: true,
+        options: opts(['presidente', 'Presidente'], ['secretario', 'Secretario'], ['principal', 'Principal'], ['suplente', 'Suplente'], ['lider_brigada', 'Líder de brigada'], ['brigadista', 'Brigadista']) },
+      { k: 'representa', l: 'Representa a', t: 'select', list: true, options: opts(['empleador', 'Empleador'], ['trabajadores', 'Trabajadores']) },
+    ],
+  },
+
+  reuniones_comite: {
+    title: 'Reuniones y actas', ciclo: 'P',
+    norma: 'COPASST: mínimo una reunión mensual. Convivencia: mínimo una trimestral',
+    order: 'fecha.desc',
+    fields: [
+      { k: 'comite_id', l: 'Comité', t: 'ref', ref: 'comites', req: true, list: true },
+      { k: 'fecha', l: 'Fecha', t: 'date', req: true, list: true },
+      { k: 'acta_numero', l: 'Acta', t: 'text', list: true },
+      { k: 'temas', l: 'Temas tratados', t: 'textarea', list: true },
+      { k: 'compromisos', l: 'Compromisos', t: 'textarea' },
+    ],
+  },
+
+  trabajadores: {
+    title: 'Trabajadores', ciclo: 'H',
+    norma: 'Estándares 1.1.4 (afiliación), 1.1.5 (alto riesgo) y 3.1.1 (perfil sociodemográfico)',
+    order: 'apellidos',
+    fields: [
+      { k: 'tipo_documento', l: 'Tipo doc.', t: 'select', def: 'CC', options: opts('CC', 'CE', 'PEP', 'PPT', 'TI', 'PA') },
+      { k: 'documento', l: 'Documento', t: 'text', req: true, list: true },
+      { k: 'nombres', l: 'Nombres', t: 'text', req: true, list: true },
+      { k: 'apellidos', l: 'Apellidos', t: 'text', req: true, list: true },
+      { k: 'fecha_nacimiento', l: 'Nacimiento', t: 'date' },
+      { k: 'sexo', l: 'Sexo', t: 'select', options: opts(['F', 'Femenino'], ['M', 'Masculino'], ['Otro', 'Otro']) },
+      { k: 'escolaridad', l: 'Escolaridad', t: 'select', options: opts('Primaria', 'Bachillerato', 'Técnico', 'Tecnólogo', 'Profesional', 'Posgrado') },
+      { k: 'cargo', l: 'Cargo', t: 'text', list: true },
+      { k: 'area', l: 'Área', t: 'text', list: true },
+      { k: 'tipo_vinculacion', l: 'Vinculación', t: 'select', def: 'directo', list: true,
+        options: opts(['directo', 'Directo'], ['temporal', 'Temporal'], ['contratista', 'Contratista'], ['aprendiz', 'Aprendiz SENA'], ['practicante', 'Practicante'], ['independiente', 'Independiente']) },
+      { k: 'fecha_ingreso', l: 'Ingreso', t: 'date', list: true },
+      { k: 'fecha_retiro', l: 'Retiro', t: 'date' },
+      { k: 'eps', l: 'EPS', t: 'text' },
+      { k: 'afp', l: 'Fondo de pensiones', t: 'text' },
+      { k: 'clase_riesgo_arl', l: 'Clase de riesgo ARL', t: 'select', list: true, options: opts(['1', 'I'], ['2', 'II'], ['3', 'III'], ['4', 'IV'], ['5', 'V']) },
+      { k: 'alto_riesgo_2090', l: 'Alto riesgo (Dec. 2090/2003)', t: 'bool' },
+      { k: 'telefono', l: 'Teléfono', t: 'text' },
+      { k: 'contacto_emergencia', l: 'Contacto de emergencia', t: 'text' },
+    ],
+  },
+
+  peligros: {
+    title: 'Matriz de peligros (GTC 45)', ciclo: 'H', listFrom: 'v_peligros',
+    norma: 'Dec. 1072/2015 Art. 2.2.4.6.15; estándares 4.1.1 a 4.2.1; NR = ND × NE × NC',
+    order: 'nr.desc',
+    fields: [
+      { k: 'proceso', l: 'Proceso', t: 'text', req: true, list: true },
+      { k: 'zona_lugar', l: 'Zona o lugar', t: 'text' },
+      { k: 'actividad', l: 'Actividad', t: 'text', req: true, list: true },
+      { k: 'tarea', l: 'Tarea', t: 'text' },
+      { k: 'rutinaria', l: 'Rutinaria', t: 'bool', def: true },
+      { k: 'clasificacion', l: 'Clasificación', t: 'select', req: true, list: true,
+        options: opts('Biológico', 'Físico', 'Químico', 'Psicosocial', 'Biomecánico', 'Condiciones de seguridad', 'Fenómenos naturales') },
+      { k: 'descripcion', l: 'Descripción del peligro', t: 'textarea', req: true, list: true },
+      { k: 'efectos_posibles', l: 'Efectos posibles', t: 'textarea' },
+      { k: 'control_fuente', l: 'Control existente en la fuente', t: 'text' },
+      { k: 'control_medio', l: 'Control existente en el medio', t: 'text' },
+      { k: 'control_individuo', l: 'Control existente en el individuo', t: 'text' },
+      { k: 'nd', l: 'Nivel de deficiencia (ND)', t: 'select', req: true,
+        options: opts(['10', '10 Muy alto'], ['6', '6 Alto'], ['2', '2 Medio'], ['0', '0 Bajo']) },
+      { k: 'ne', l: 'Nivel de exposición (NE)', t: 'select', req: true,
+        options: opts(['4', '4 Continua'], ['3', '3 Frecuente'], ['2', '2 Ocasional'], ['1', '1 Esporádica']) },
+      { k: 'nc', l: 'Nivel de consecuencia (NC)', t: 'select', req: true,
+        options: opts(['100', '100 Mortal o catastrófico'], ['60', '60 Muy grave'], ['25', '25 Grave'], ['10', '10 Leve']) },
+      { k: 'np', l: 'NP', t: 'number', ro: true, list: true },
+      { k: 'nr', l: 'NR', t: 'number', ro: true, list: true },
+      { k: 'nivel_riesgo', l: 'Nivel', t: 'text', ro: true, list: true, tone: tonoRiesgo },
+      { k: 'aceptabilidad', l: 'Aceptabilidad', t: 'text', ro: true, list: true },
+      { k: 'expuestos', l: 'N.º expuestos', t: 'number', def: 0, list: true },
+      { k: 'peor_consecuencia', l: 'Peor consecuencia', t: 'text' },
+      { k: 'requisito_legal', l: 'Requisito legal asociado', t: 'text' },
+      { k: 'med_eliminacion', l: 'Eliminación', t: 'textarea' },
+      { k: 'med_sustitucion', l: 'Sustitución', t: 'textarea' },
+      { k: 'med_ingenieria', l: 'Controles de ingeniería', t: 'textarea' },
+      { k: 'med_administrativos', l: 'Controles administrativos, señalización', t: 'textarea' },
+      { k: 'med_epp', l: 'Elementos de protección personal', t: 'textarea' },
+      { k: 'fecha_actualizacion', l: 'Actualizado', t: 'date', list: true, def: 'hoy' },
+    ],
+  },
+
+  evaluaciones_medicas: {
+    title: 'Evaluaciones médicas ocupacionales', ciclo: 'H',
+    norma: 'Res. 1843/2025 (antes Res. 2346/2007); estándares 3.1.4 y 3.1.6. La empresa solo registra el concepto: la historia clínica la custodia la IPS',
+    order: 'fecha.desc',
+    fields: [
+      { ...trabajador, req: true },
+      { k: 'tipo', l: 'Tipo', t: 'select', req: true, list: true,
+        options: opts(['ingreso', 'Ingreso'], ['periodica', 'Periódica'], ['post_incapacidad', 'Post incapacidad'], ['cambio_ocupacion', 'Cambio de ocupación'], ['egreso', 'Egreso']) },
+      { k: 'fecha', l: 'Fecha', t: 'date', req: true, list: true },
+      { k: 'ips', l: 'IPS', t: 'text', list: true },
+      { k: 'concepto', l: 'Concepto', t: 'select', req: true, list: true, tone: tonoEstado,
+        options: opts(['apto', 'Apto'], ['apto_con_restricciones', 'Apto con restricciones'], ['no_apto', 'No apto'], ['aplazado', 'Aplazado']) },
+      { k: 'restricciones', l: 'Restricciones', t: 'textarea' },
+      { k: 'recomendaciones', l: 'Recomendaciones', t: 'textarea' },
+      { k: 'fecha_proxima', l: 'Próxima evaluación', t: 'date', list: true },
+    ],
+  },
+
+  capacitaciones: {
+    title: 'Capacitaciones', ciclo: 'H',
+    norma: 'Dec. 1072/2015 Art. 2.2.4.6.11; estándares 1.1.7, 1.2.1 y 1.2.2',
+    order: 'fecha.desc',
+    fields: [
+      { k: 'tema', l: 'Tema', t: 'text', req: true, list: true },
+      { k: 'tipo', l: 'Tipo', t: 'select', req: true, list: true,
+        options: opts(['induccion', 'Inducción'], ['reinduccion', 'Reinducción'], ['copasst', 'COPASST'], ['convivencia', 'Convivencia'], ['brigada', 'Brigada'],
+          ['alturas', 'Trabajo en alturas'], ['espacios_confinados', 'Espacios confinados'], ['riesgo_especifico', 'Riesgo específico'], ['otra', 'Otra']) },
+      { k: 'fecha', l: 'Fecha', t: 'date', req: true, list: true },
+      { k: 'horas', l: 'Horas', t: 'number', list: true },
+      { k: 'facilitador', l: 'Facilitador', t: 'text', list: true },
+      { k: 'estado', l: 'Estado', t: 'select', list: true, def: 'programada', tone: tonoEstado,
+        options: opts(['programada', 'Programada'], ['ejecutada', 'Ejecutada'], ['cancelada', 'Cancelada']) },
+      { k: 'observaciones', l: 'Observaciones', t: 'textarea' },
+    ],
+  },
+
+  asistencias: {
+    title: 'Asistencia a capacitaciones', ciclo: 'H',
+    norma: 'Registro de asistencia como evidencia de los estándares 1.2.1 y 1.2.2',
+    fields: [
+      { k: 'capacitacion_id', l: 'Capacitación', t: 'ref', ref: 'capacitaciones', req: true, list: true },
+      { ...trabajador, req: true },
+      { k: 'asistio', l: 'Asistió', t: 'bool', def: true, list: true, tone: SI_NO },
+      { k: 'calificacion', l: 'Evaluación', t: 'number', list: true },
+    ],
+  },
+
+  epp_entregas: {
+    title: 'Entrega de EPP', ciclo: 'H',
+    norma: 'Res. 2400/1979 Art. 176; estándar 4.2.6',
+    order: 'fecha_entrega.desc',
+    fields: [
+      { ...trabajador, req: true },
+      { k: 'elemento', l: 'Elemento', t: 'text', req: true, list: true },
+      { k: 'cantidad', l: 'Cantidad', t: 'number', def: 1, list: true },
+      { k: 'fecha_entrega', l: 'Entregado', t: 'date', req: true, list: true, def: 'hoy' },
+      { k: 'fecha_reposicion', l: 'Reposición', t: 'date', list: true },
+      { k: 'capacitado_uso', l: 'Capacitado en uso', t: 'bool', list: true, tone: SI_NO },
+      { k: 'firma_recibido', l: 'Firmó recibido', t: 'bool', list: true, tone: SI_NO },
+    ],
+  },
+
+  inspecciones: {
+    title: 'Inspecciones', ciclo: 'H',
+    norma: 'Estándar 4.2.4: inspecciones con participación del COPASST o Vigía',
+    order: 'fecha.desc',
+    fields: [
+      { k: 'tipo', l: 'Tipo', t: 'select', req: true, list: true,
+        options: opts(['locativa', 'Locativa'], ['extintores', 'Extintores'], ['botiquines', 'Botiquines'], ['epp', 'EPP'], ['herramientas', 'Herramientas'],
+          ['equipos_alturas', 'Equipos de alturas'], ['vehiculos', 'Vehículos'], ['orden_aseo', 'Orden y aseo'], ['quimicos', 'Productos químicos'], ['otra', 'Otra']) },
+      { k: 'area', l: 'Área', t: 'text', list: true },
+      { k: 'fecha', l: 'Fecha', t: 'date', req: true, list: true },
+      { k: 'responsable', l: 'Responsable', t: 'text', list: true },
+      { k: 'participa_copasst', l: 'Participó COPASST', t: 'bool', list: true, tone: SI_NO },
+      { k: 'hallazgos', l: 'Hallazgos', t: 'textarea' },
+      { k: 'estado', l: 'Estado', t: 'select', def: 'programada', list: true, tone: tonoEstado,
+        options: opts(['programada', 'Programada'], ['ejecutada', 'Ejecutada'], ['cancelada', 'Cancelada']) },
+    ],
+  },
+
+  eventos: {
+    title: 'Accidentes e incidentes', ciclo: 'V', listFrom: 'v_eventos',
+    norma: 'Reporte a ARL y EPS en 2 días hábiles (Dec. 1295/1994, FURAT). Investigación en 15 días (Res. 1401/2007). Graves y mortales: reporte a la Dirección Territorial de Mintrabajo',
+    order: 'fecha_evento.desc',
+    fields: [
+      { k: 'tipo', l: 'Tipo', t: 'select', req: true, list: true,
+        tone: v => (v === 'accidente_mortal' || v === 'accidente_grave' ? 'rojo' : undefined),
+        options: opts(['incidente', 'Incidente'], ['accidente', 'Accidente de trabajo'], ['accidente_grave', 'Accidente grave'], ['accidente_mortal', 'Accidente mortal']) },
+      { ...trabajador },
+      { k: 'fecha_evento', l: 'Fecha', t: 'date', req: true, list: true },
+      { k: 'hora_evento', l: 'Hora', t: 'time' },
+      { k: 'lugar', l: 'Lugar', t: 'text' },
+      { k: 'descripcion', l: 'Descripción', t: 'textarea', req: true },
+      { k: 'tipo_lesion', l: 'Tipo de lesión', t: 'text' },
+      { k: 'parte_cuerpo', l: 'Parte del cuerpo', t: 'text' },
+      { k: 'agente', l: 'Agente', t: 'text' },
+      { k: 'mecanismo', l: 'Mecanismo', t: 'text' },
+      { k: 'dias_incapacidad', l: 'Días de incapacidad', t: 'number', def: 0, list: true },
+      { k: 'dias_cargados', l: 'Días cargados', t: 'number', def: 0 },
+      { k: 'furat_numero', l: 'N.º FURAT', t: 'text' },
+      { k: 'fecha_reporte_arl', l: 'Reporte a ARL', t: 'date' },
+      { k: 'fecha_reporte_eps', l: 'Reporte a EPS', t: 'date' },
+      { k: 'fecha_reporte_mintrabajo', l: 'Reporte a Mintrabajo', t: 'date' },
+      { k: 'limite_reporte', l: 'Límite reporte', t: 'date', ro: true, list: true },
+      { k: 'estado_reporte', l: 'Reporte', t: 'text', ro: true, list: true, tone: tonoEstado },
+      { k: 'fecha_investigacion', l: 'Fecha de investigación', t: 'date' },
+      { k: 'estado_investigacion', l: 'Investigación', t: 'text', ro: true, list: true, tone: tonoEstado },
+      { k: 'equipo_investigador', l: 'Equipo investigador', t: 'textarea' },
+      { k: 'causas_inmediatas', l: 'Causas inmediatas', t: 'textarea' },
+      { k: 'causas_basicas', l: 'Causas básicas', t: 'textarea' },
+      { k: 'medidas_control', l: 'Medidas de control', t: 'textarea' },
+      { k: 'fecha_remision_arl', l: 'Investigación remitida a ARL', t: 'date' },
+      { k: 'lecciones_aprendidas', l: 'Lecciones aprendidas', t: 'textarea' },
+    ],
+  },
+
+  enfermedades_laborales: {
+    title: 'Enfermedades laborales', ciclo: 'V',
+    norma: 'Dec. 1477/2014 (tabla de enfermedades); Ley 1562/2012 Art. 4; estándares 3.2.1 y 3.2.2',
+    order: 'fecha_diagnostico.desc',
+    fields: [
+      { ...trabajador, req: true },
+      { k: 'grupo_decreto_1477', l: 'Grupo (Dec. 1477)', t: 'text', list: true },
+      { k: 'fecha_diagnostico', l: 'Diagnóstico', t: 'date', list: true },
+      { k: 'fecha_calificacion', l: 'Calificación', t: 'date', list: true },
+      { k: 'entidad_calificadora', l: 'Calificó', t: 'select', list: true, options: opts('EPS', 'ARL', 'AFP', 'Junta Regional', 'Junta Nacional') },
+      { k: 'estado', l: 'Estado', t: 'select', def: 'en_estudio', list: true,
+        options: opts(['en_estudio', 'En estudio'], ['calificada_laboral', 'Origen laboral'], ['calificada_comun', 'Origen común'], ['en_controversia', 'En controversia']) },
+      { k: 'fecha_reporte_arl', l: 'Reporte a ARL', t: 'date' },
+      { k: 'observaciones', l: 'Observaciones', t: 'textarea' },
+    ],
+  },
+
+  ausentismo: {
+    title: 'Ausentismo', ciclo: 'V',
+    norma: 'Res. 0312/2019 Art. 30: ausentismo por causa médica; estándar 3.3.6',
+    order: 'fecha_inicio.desc',
+    fields: [
+      { ...trabajador, req: true },
+      { k: 'origen', l: 'Origen', t: 'select', req: true, list: true,
+        options: opts(['enfermedad_general', 'Enfermedad general'], ['accidente_trabajo', 'Accidente de trabajo'], ['enfermedad_laboral', 'Enfermedad laboral'],
+          ['licencia_maternidad', 'Licencia de maternidad'], ['licencia_paternidad', 'Licencia de paternidad'], ['otro', 'Otro']) },
+      { k: 'fecha_inicio', l: 'Desde', t: 'date', req: true, list: true },
+      { k: 'fecha_fin', l: 'Hasta', t: 'date', req: true, list: true },
+      { k: 'dias', l: 'Días', t: 'number', ro: true, list: true },
+      { k: 'evento_id', l: 'Evento relacionado', t: 'ref', ref: 'eventos' },
+      { k: 'observaciones', l: 'Observaciones', t: 'textarea' },
+    ],
+  },
+
+  nomina_mensual: {
+    title: 'Base mensual para indicadores', ciclo: 'V',
+    norma: 'Denominadores de los indicadores del Art. 30 de la Res. 0312/2019',
+    order: 'anio.desc,mes.desc',
+    fields: [
+      { k: 'anio', l: 'Año', t: 'number', req: true, list: true, def: () => new Date().getFullYear() },
+      { k: 'mes', l: 'Mes', t: 'number', req: true, list: true },
+      { k: 'trabajadores', l: 'Trabajadores en el mes', t: 'number', req: true, list: true },
+      { k: 'dias_trabajo_programados', l: 'Días de trabajo programados (persona-día)', t: 'number', req: true, list: true },
+    ],
+  },
+
+  acciones: {
+    title: 'Acciones correctivas, preventivas y de mejora', ciclo: 'A',
+    norma: 'Dec. 1072/2015 Arts. 2.2.4.6.33 y 2.2.4.6.34; estándares 7.1.1 a 7.1.4',
+    order: 'fecha_limite',
+    fields: [
+      { k: 'tipo', l: 'Tipo', t: 'select', req: true, list: true, options: opts(['correctiva', 'Correctiva'], ['preventiva', 'Preventiva'], ['mejora', 'Mejora']) },
+      { k: 'origen', l: 'Origen', t: 'select', req: true, list: true,
+        options: opts(['autoevaluacion', 'Autoevaluación'], ['auditoria', 'Auditoría'], ['revision_direccion', 'Revisión por la dirección'], ['investigacion', 'Investigación AT/EL'],
+          ['inspeccion', 'Inspección'], ['arl', 'ARL'], ['autoridad', 'Autoridad'], ['copasst', 'COPASST'], ['otro', 'Otro']) },
+      { k: 'referencia', l: 'Referencia', t: 'text', list: true },
+      { k: 'descripcion', l: 'Descripción', t: 'textarea', req: true, list: true },
+      { k: 'causa_raiz', l: 'Causa raíz', t: 'textarea' },
+      { k: 'responsable', l: 'Responsable', t: 'text', list: true },
+      { k: 'fecha_limite', l: 'Fecha límite', t: 'date', list: true },
+      { k: 'fecha_cierre', l: 'Cierre', t: 'date' },
+      { k: 'estado', l: 'Estado', t: 'select', def: 'abierta', list: true, tone: tonoEstado,
+        options: opts(['abierta', 'Abierta'], ['en_proceso', 'En proceso'], ['cerrada', 'Cerrada']) },
+      { k: 'eficacia', l: 'Eficacia', t: 'select', options: opts(['pendiente', 'Por verificar'], ['eficaz', 'Eficaz'], ['no_eficaz', 'No eficaz']) },
+    ],
+  },
+};
+
+export const NAV = [
+  { ciclo: 'P', nombre: 'Planear', items: [
+    ['/autoevaluacion', 'Autoevaluación 0312'], ['/r/plan_anual', 'Plan anual'], ['/r/matriz_legal', 'Matriz legal'],
+    ['/r/documentos', 'Documentos'], ['/r/comites', 'Comités'], ['/r/comite_miembros', 'Integrantes'], ['/r/reuniones_comite', 'Reuniones y actas']] },
+  { ciclo: 'H', nombre: 'Hacer', items: [
+    ['/r/trabajadores', 'Trabajadores'], ['/r/peligros', 'Matriz de peligros'], ['/r/evaluaciones_medicas', 'Evaluaciones médicas'],
+    ['/r/capacitaciones', 'Capacitaciones'], ['/r/asistencias', 'Asistencias'], ['/r/epp_entregas', 'Entrega de EPP'], ['/r/inspecciones', 'Inspecciones']] },
+  { ciclo: 'V', nombre: 'Verificar', items: [
+    ['/r/eventos', 'Accidentes e incidentes'], ['/r/enfermedades_laborales', 'Enfermedades laborales'], ['/r/ausentismo', 'Ausentismo'],
+    ['/indicadores', 'Indicadores'], ['/r/nomina_mensual', 'Base mensual']] },
+  { ciclo: 'A', nombre: 'Actuar', items: [['/r/acciones', 'Acciones de mejora']] },
+];

@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-test:
+    name: Build and smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      POSTGRES_DB: sgsst_ci
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ci-postgres-password
+      AUTHENTICATOR_PASSWORD: ci-authenticator-password
+      JWT_SECRET: ci-only-jwt-secret-at-least-32-characters-long
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build and start services
+        run: docker compose up --build --detach
+
+      - name: Wait for API and frontend
+        run: |
+          set -e
+          for url in http://localhost:3000/ http://localhost:8080/; do
+            curl --fail --silent --show-error --retry 30 --retry-connrefused --retry-delay 2 --retry-max-time 60 "$url" --output /dev/null
+          done
+
+      - name: Show service logs on failure
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Stop services
+        if: always()
+        run: docker compose down --volumes
