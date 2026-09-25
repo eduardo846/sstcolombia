@@ -89,6 +89,18 @@ docker compose exec db psql -U postgres -d sgsst -c \
   "SELECT auth.alta_empresa('900111222-3','Mi Empresa S.A.S.',2::smallint,35,'sst@miempresa.co','Nombre Responsable','ClaveSegura2026');"
 ```
 
+Para crear la primera cuenta de administrador en una base Render ya inicializada, ejecuta `psql` desde Git Bash usando la conexión externa SSL de Render. Establece `PGHOST`, `PGPORT`, `PGDATABASE` y `PGUSER` con los valores de **Connect → External connection**; `psql` pedirá la contraseña de PostgreSQL. Después:
+
+```bash
+export PGSSLMODE=require
+read -r -s -p "Nueva contraseña del administrador: " SG_ADMIN_PASSWORD; printf '\n'
+export SG_ADMIN_PASSWORD
+psql -v ON_ERROR_STOP=1 -f db/05_create_admin.sql
+unset SG_ADMIN_PASSWORD
+```
+
+El script pregunta los datos de la empresa y del administrador. No uses la contraseña de demostración ni incluyas contraseñas en comandos, archivos versionados o mensajes.
+
 **Respaldo y restauración:**
 
 ```bash
