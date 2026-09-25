@@ -45,10 +45,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes postgresql-client
 
-      - name: Initialize the empty database
+      - name: Configure PostgreSQL connection
         run: |
           set -euo pipefail
-          export PGSSLMODE=require
 
           python3 - <<'PY'
           import os
@@ -72,14 +71,23 @@ jobs:
               raise SystemExit("Invalid database name.")
           if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_$]*", values["PGUSER"]):
               raise SystemExit("Invalid database username.")
+          if values["PGUSER"] == "authenticator":
+              raise SystemExit("Use the Render PostgreSQL admin user, not authenticator.")
+          if "\n" in values["PGPASSWORD"] or "\r" in values["PGPASSWORD"]:
+              raise SystemExit("The database password contains an unsupported newline.")
           values["POSTGRES_DB"] = values["PGDATABASE"]
           values["POSTGRES_USER"] = values["PGUSER"]
+          print(f"::add-mask::{values['PGPASSWORD']}")
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env_file:
               for key, value in values.items():
                   env_file.write(f"{key}={value}\n")
           PY
 
-          schema_exists=$(psql "$RENDER_DATABASE_URL" -v ON_ERROR_STOP=1 -tAc \
+      - name: Initialize the empty database
+        run: |
+          set -euo pipefail
+
+          schema_exists=$(psql -v ON_ERROR_STOP=1 -tAc \
             "SELECT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'api')")
           if [[ "$schema_exists" == "t" ]]; then
             echo "::error::The api schema already exists. Refusing to rerun initialization."
@@ -87,13 +95,13 @@ jobs:
           fi
 
           bash db/00_roles.sh
-          psql "$RENDER_DATABASE_URL" -v ON_ERROR_STOP=1 -f db/01_schema.sql
-          psql "$RENDER_DATABASE_URL" -v ON_ERROR_STOP=1 -f db/02_catalogos.sql
-          psql "$RENDER_DATABASE_URL" -v ON_ERROR_STOP=1 -f db/03_api.sql
+          psql -v ON_ERROR_STOP=1 -f db/01_schema.sql
+          psql -v ON_ERROR_STOP=1 -f db/02_catalogos.sql
+          psql -v ON_ERROR_STOP=1 -f db/03_api.sql
 
-          relations=$(psql "$RENDER_DATABASE_URL" -v ON_ERROR_STOP=1 -tAc \
+          relations=$(psql -v ON_ERROR_STOP=1 -tAc \
             "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'api' AND c.relkind IN ('r','v','m','f')")
-          functions=$(psql "$RENDER_DATABASE_URL" -v ON_ERROR_STOP=1 -tAc \
+          functions=$(psql -v ON_ERROR_STOP=1 -tAc \
             "SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'api'")
           test "$relations" -gt 0 || { echo "::error::No API relations were created."; exit 1; }
           test "$functions" -gt 0 || { echo "::error::No API functions were created."; exit 1; }
