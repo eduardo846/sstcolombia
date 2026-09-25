@@ -1,0 +1,5 @@
+FROM postgrest/postgrest:v12.2.3
+
+ENV PGRST_SERVER_PORT=10000
+
+EXPOSE 10000

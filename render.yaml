@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: sgsst-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /
+    envVars:
+      - key: PGRST_DB_URI
+        sync: false
+      - key: PGRST_DB_SCHEMAS
+        value: api
+      - key: PGRST_DB_ANON_ROLE
+        value: web_anon
+      - key: PGRST_DB_MAX_ROWS
+        value: "2000"
+      - key: PGRST_JWT_SECRET
+        sync: false
+      - key: PGRST_SERVER_CORS_ALLOWED_ORIGINS
+        sync: false

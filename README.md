@@ -24,6 +24,10 @@ El workflow de GitHub Actions en `.github/workflows/ci.yml` construye y levanta 
 
 El archivo `netlify.toml` configura el build de React y el fallback de rutas de la SPA. El workflow `.github/workflows/netlify-deploy.yml` publica automáticamente la rama `deployment` en el sitio Netlify configurado y también permite un despliegue manual. Configura en GitHub los secretos de repositorio `NETLIFY_AUTH_TOKEN` y `NETLIFY_SITE_ID`, y la variable de repositorio `VITE_API_URL` con la URL HTTPS pública de PostgREST, sin una barra final (por ejemplo, `https://api.ejemplo.com`). El frontend no incluye el backend: PostgreSQL y PostgREST deben estar desplegados por separado, con CORS habilitado para el dominio de Netlify. No guardes tokens en el repositorio ni los compartas en mensajes.
 
+### API en Render
+
+El archivo `render.yaml` permite crear el servicio PostgREST en Render como un Blueprint, usando el Dockerfile de `backend/`. En Render, crea un Blueprint desde la rama `deployment` y configura los tres valores secretos solicitados: `PGRST_DB_URI` (URL interna de la base PostgreSQL, obtenida en Render), `PGRST_JWT_SECRET` (el mismo secreto que se guardó en `auth.config` al ejecutar `db/00_roles.sh`) y `PGRST_SERVER_CORS_ALLOWED_ORIGINS` (origen exacto del sitio Netlify, por ejemplo `https://nombre-del-sitio.netlify.app`). El servicio requiere que el esquema ya esté inicializado y que exista al menos un administrador. El plan `free` puede suspender el servicio tras inactividad y demorar la primera solicitud al reactivarse.
+
 No cargues datos reales ni uses esta instancia para información de salud laboral hasta configurar y verificar el backend, sus credenciales, HTTPS, respaldos y controles de acceso. Las credenciales de demostración incluidas en el repositorio son solo para pruebas.
 
 > Para producción elimina `db/04_demo.sql` **antes** del primer arranque. Los scripts de `db/` solo se ejecutan cuando el volumen `pgdata` está vacío; para reinstalar desde cero: `docker compose down -v`.
