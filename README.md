@@ -22,7 +22,7 @@ El workflow de GitHub Actions en `.github/workflows/ci.yml` construye y levanta 
 
 ## Despliegue del frontend en Netlify
 
-El archivo `netlify.toml` configura el build de React y el fallback de rutas de la SPA. Conecta el repositorio de GitHub `eduardo846/sstcolombia` en Netlify y selecciona la rama `deployment`. Antes de publicar, configura la variable de entorno `VITE_API_URL` con la URL HTTPS pública de PostgREST, sin una barra final (por ejemplo, `https://api.ejemplo.com`). El frontend no incluye el backend: PostgreSQL y PostgREST deben estar desplegados por separado, con CORS habilitado para el dominio de Netlify.
+El archivo `netlify.toml` configura el build de React y el fallback de rutas de la SPA. El workflow `.github/workflows/netlify-deploy.yml` publica automáticamente la rama `deployment` en el sitio Netlify configurado y también permite un despliegue manual. Configura en GitHub los secretos de repositorio `NETLIFY_AUTH_TOKEN` y `NETLIFY_SITE_ID`, y la variable de repositorio `VITE_API_URL` con la URL HTTPS pública de PostgREST, sin una barra final (por ejemplo, `https://api.ejemplo.com`). El frontend no incluye el backend: PostgreSQL y PostgREST deben estar desplegados por separado, con CORS habilitado para el dominio de Netlify. No guardes tokens en el repositorio ni los compartas en mensajes.
 
 No cargues datos reales ni uses esta instancia para información de salud laboral hasta configurar y verificar el backend, sus credenciales, HTTPS, respaldos y controles de acceso. Las credenciales de demostración incluidas en el repositorio son solo para pruebas.
 
