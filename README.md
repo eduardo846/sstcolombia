@@ -28,6 +28,14 @@ El archivo `netlify.toml` configura el build de React y el fallback de rutas de 
 
 El archivo `render.yaml` permite crear el servicio PostgREST `sgsst-api-virginia` en Render como un Blueprint, en la región Virginia y usando el Dockerfile de `backend/`. En Render, sincroniza el Blueprint desde la rama `deployment` y configura los tres valores secretos solicitados: `PGRST_DB_URI` (URL interna de la base PostgreSQL, obtenida en Render), `PGRST_JWT_SECRET` (el mismo secreto que se guardó en `auth.config` al ejecutar `db/00_roles.sh`) y `PGRST_SERVER_CORS_ALLOWED_ORIGINS` (origen exacto del sitio Netlify, por ejemplo `https://nombre-del-sitio.netlify.app`). El servicio requiere que el esquema ya esté inicializado y que exista al menos un administrador. El plan `free` puede suspender el servicio tras inactividad y demorar la primera solicitud al reactivarse. Crear este servicio nuevo no cambia ni elimina el anterior ni migra la base de datos.
 
+Para inicializar una base Render vacía de forma manual desde GitHub Actions, crea estos secretos de repositorio en **Settings → Secrets and variables → Actions**:
+
+- `RENDER_DATABASE_URL`: URL externa de PostgreSQL con el usuario administrador de la base y SSL habilitado.
+- `AUTHENTICATOR_PASSWORD`: genera localmente con `openssl rand -hex 24`.
+- `JWT_SECRET`: genera localmente con `openssl rand -hex 32`.
+
+No compartas ni confirmes los valores en el chat. En **Actions → Initialize Render database → Run workflow**, selecciona `deployment`. El workflow se detiene si ya existe el esquema `api`, ejecuta los scripts `db/00_roles.sh` a `db/03_api.sql` y verifica que se hayan creado objetos. Luego configura `PGRST_DB_URI` en Render usando el host de base de datos accesible desde la región del servicio y la contraseña `AUTHENTICATOR_PASSWORD`; configura `PGRST_JWT_SECRET` con el valor `JWT_SECRET`. Ejecuta este workflow solo una vez en una base vacía.
+
 No cargues datos reales ni uses esta instancia para información de salud laboral hasta configurar y verificar el backend, sus credenciales, HTTPS, respaldos y controles de acceso. Las credenciales de demostración incluidas en el repositorio son solo para pruebas.
 
 > Para producción elimina `db/04_demo.sql` **antes** del primer arranque. Los scripts de `db/` solo se ejecutan cuando el volumen `pgdata` está vacío; para reinstalar desde cero: `docker compose down -v`.

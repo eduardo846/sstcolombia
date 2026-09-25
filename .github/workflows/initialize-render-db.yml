@@ -1,0 +1,100 @@
+name: Initialize Render database
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: initialize-render-database
+  cancel-in-progress: false
+
+jobs:
+  initialize:
+    name: Initialize empty PostgreSQL database
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      RENDER_DATABASE_URL: ${{ secrets.RENDER_DATABASE_URL }}
+      AUTHENTICATOR_PASSWORD: ${{ secrets.AUTHENTICATOR_PASSWORD }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate secrets and database URL
+        run: |
+          set -euo pipefail
+          test -n "$RENDER_DATABASE_URL" || { echo "::error::Configure the RENDER_DATABASE_URL repository secret."; exit 1; }
+          test -n "$AUTHENTICATOR_PASSWORD" || { echo "::error::Configure the AUTHENTICATOR_PASSWORD repository secret."; exit 1; }
+          test -n "$JWT_SECRET" || { echo "::error::Configure the JWT_SECRET repository secret."; exit 1; }
+          [[ "$AUTHENTICATOR_PASSWORD" =~ ^[A-Fa-f0-9]{48,}$ ]] || {
+            echo "::error::AUTHENTICATOR_PASSWORD must be a hex value of at least 48 characters."; exit 1;
+          }
+          [[ "$JWT_SECRET" =~ ^[A-Fa-f0-9]{64,}$ ]] || {
+            echo "::error::JWT_SECRET must be a hex value of at least 64 characters."; exit 1;
+          }
+          [[ "$RENDER_DATABASE_URL" == postgresql://* || "$RENDER_DATABASE_URL" == postgres://* ]] || {
+            echo "::error::RENDER_DATABASE_URL must be the external PostgreSQL connection URL."; exit 1;
+          }
+
+      - name: Set up PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+
+      - name: Initialize the empty database
+        run: |
+          set -euo pipefail
+          export PGSSLMODE=require
+
+          python3 - <<'PY'
+          import os
+          import re
+          from urllib.parse import unquote, urlsplit
+
+          url = urlsplit(os.environ["RENDER_DATABASE_URL"])
+          values = {
+              "PGHOST": url.hostname or "",
+              "PGPORT": str(url.port or 5432),
+              "PGDATABASE": unquote(url.path.lstrip("/")),
+              "PGUSER": unquote(url.username or ""),
+              "PGPASSWORD": unquote(url.password or ""),
+              "PGSSLMODE": "require",
+          }
+          if not values["PGHOST"] or not values["PGDATABASE"] or not values["PGUSER"] or not values["PGPASSWORD"]:
+              raise SystemExit("RENDER_DATABASE_URL must contain host, database, user, and password.")
+          if not re.fullmatch(r"[A-Za-z0-9_.-]+", values["PGHOST"]):
+              raise SystemExit("Invalid database hostname.")
+          if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_$]*", values["PGDATABASE"]):
+              raise SystemExit("Invalid database name.")
+          if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_$]*", values["PGUSER"]):
+              raise SystemExit("Invalid database username.")
+          values["POSTGRES_DB"] = values["PGDATABASE"]
+          values["POSTGRES_USER"] = values["PGUSER"]
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env_file:
+              for key, value in values.items():
+                  env_file.write(f"{key}={value}\n")
+          PY
+
+          schema_exists=$(psql "$RENDER_DATABASE_URL" -v ON_ERROR_STOP=1 -tAc \
+            "SELECT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'api')")
+          if [[ "$schema_exists" == "t" ]]; then
+            echo "::error::The api schema already exists. Refusing to rerun initialization."
+            exit 1
+          fi
+
+          bash db/00_roles.sh
+          psql "$RENDER_DATABASE_URL" -v ON_ERROR_STOP=1 -f db/01_schema.sql
+          psql "$RENDER_DATABASE_URL" -v ON_ERROR_STOP=1 -f db/02_catalogos.sql
+          psql "$RENDER_DATABASE_URL" -v ON_ERROR_STOP=1 -f db/03_api.sql
+
+          relations=$(psql "$RENDER_DATABASE_URL" -v ON_ERROR_STOP=1 -tAc \
+            "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'api' AND c.relkind IN ('r','v','m','f')")
+          functions=$(psql "$RENDER_DATABASE_URL" -v ON_ERROR_STOP=1 -tAc \
+            "SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'api'")
+          test "$relations" -gt 0 || { echo "::error::No API relations were created."; exit 1; }
+          test "$functions" -gt 0 || { echo "::error::No API functions were created."; exit 1; }
+          echo "Database initialized: $relations API relations and $functions API functions."
