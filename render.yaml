@@ -3,6 +3,7 @@ services:
     name: sgsst-api
     runtime: docker
     plan: free
+    region: virginia
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     healthCheckPath: /
