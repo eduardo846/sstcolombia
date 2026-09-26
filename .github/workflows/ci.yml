@@ -50,6 +50,31 @@ jobs:
                    jsonb_build_object('unidad_agropecuaria', agro, 'clase_riesgo', riesgo, 'numero_trabajadores', n))), ',' ORDER BY i)
                  FROM (VALUES (1, true, 1, 10), (2, true, 4, 10), (3, false, 1, 10), (4, true, 3, 30), (5, false, 5, 5))
                    v(i, agro, riesgo, n)")" = "3,60,7,21,60"
+          # Módulos del Dec. 1072 creados
+          test "$(psql -c "SELECT count(*) FROM pg_tables WHERE schemaname = 'api' AND tablename IN
+                 ('planes_emergencia','simulacros','gestion_cambio','contratistas','auditorias','revisiones_direccion')")" = 6
+          # Res. 1401: accidente grave de hace 20 días sin remisión, sin reporte a Mintrabajo y sin profesional con licencia
+          docker compose exec -T db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -q <<'SQL'
+          BEGIN;
+          DO $$
+          DECLARE nuevo int; r record;
+          BEGIN
+            INSERT INTO api.eventos (empresa_id, tipo, fecha_evento, descripcion, fecha_investigacion,
+                                     inv_jefe_inmediato, inv_copasst, inv_responsable_sst)
+            VALUES ((SELECT min(id) FROM api.empresas), 'accidente_grave', current_date - 20, 'Prueba CI',
+                    current_date - 10, true, true, true)
+            RETURNING id INTO nuevo;
+            SELECT * INTO r FROM api.v_eventos WHERE id = nuevo;
+            IF r.estado_remision_arl <> 'vencida' OR r.estado_reporte_mintrabajo <> 'vencido' OR r.equipo_completo THEN
+              RAISE EXCEPTION 'Res. 1401 mal calculada: remisión %, Mintrabajo %, equipo %',
+                r.estado_remision_arl, r.estado_reporte_mintrabajo, r.equipo_completo;
+            END IF;
+            IF (SELECT remisiones_arl_pendientes FROM api.v_dashboard) < 1 THEN
+              RAISE EXCEPTION 'El panel no cuenta la remisión pendiente';
+            END IF;
+          END $$;
+          ROLLBACK;
+          SQL
 
       - name: Show service logs on failure
         if: failure()

@@ -66,7 +66,7 @@ Variables de entorno del servicio `sgsst-api-virginia`:
 
 `render.yaml` describe el mismo servicio como Blueprint. El servicio actual se creó directamente, no desde el Blueprint.
 
-**Diagnóstico rápido**: en el log de arranque debe aparecer `Schema cache loaded 31 Relations, ... 7 Functions`. Si aparece `0 Relations`, la base a la que apunta `PGRST_DB_URI` no está inicializada, el health check falla y Render marca el despliegue como *Timed Out*.
+**Diagnóstico rápido**: en el log de arranque debe aparecer `Schema cache loaded 37 Relations, ... 8 Functions`. Si aparece `0 Relations`, la base a la que apunta `PGRST_DB_URI` no está inicializada, el health check falla y Render marca el despliegue como *Timed Out*.
 
 El plan free suspende el servicio tras un rato de inactividad. La primera petición después puede tardar entre 30 y 60 segundos.
 
@@ -136,9 +136,13 @@ No hay backend intermedio: la lógica de negocio vive en PostgreSQL (vistas, col
 | H | Matriz de peligros con NP, NR y nivel calculados | GTC 45 de 2012 |
 | H | Evaluaciones médicas (solo concepto de aptitud) | Res. 1843/2025 |
 | H | Capacitaciones, asistencia, EPP, inspecciones | Estándares 1.2.1, 4.2.4, 4.2.6 |
-| V | Accidentes e incidentes con semáforo de plazos | Dec. 1295/1994; Res. 1401/2007 |
+| H | Planes de emergencia y simulacros | Dec. 1072 Art. 2.2.4.6.25; estándares 5.1.1, 5.1.2 |
+| H | Gestión del cambio | Dec. 1072 Art. 2.2.4.6.26; estándar 2.11.1 |
+| H | Contratistas y proveedores | Dec. 1072 Arts. 2.2.4.6.27–28; estándares 2.9.1, 2.10.1 |
+| V | Accidentes e incidentes con semáforo de plazos y equipo investigador | Dec. 1295/1994; Res. 1401/2007 Arts. 7 y 14 |
 | V | Enfermedades laborales y ausentismo | Dec. 1477/2014 |
 | V | Indicadores mínimos | Res. 0312/2019 Art. 30 |
+| V | Auditoría anual y revisión por la dirección | Dec. 1072 Arts. 2.2.4.6.29–31; estándares 6.1.2 a 6.1.4 |
 | A | Acciones correctivas, preventivas y de mejora | Dec. 1072 Arts. 2.2.4.6.33–34 |
 
 ### Reglas automáticas en la base de datos
@@ -148,6 +152,8 @@ No hay backend intermedio: la lógica de negocio vive en PostgreSQL (vistas, col
 - **Plan de mejoramiento**: `generar_plan_mejoramiento` crea una acción correctiva por cada estándar incumplido.
 - **Plazo de reporte FURAT**: 2 días hábiles, descontando fines de semana y **festivos colombianos calculados para cualquier año** (Ley Emiliani y fechas móviles de Semana Santa).
 - **Plazo de investigación**: 15 días calendario.
+- **Accidentes graves y mortales**: reporte a Mintrabajo en 2 días hábiles (Dec. 1072 Art. 2.2.4.1.7) y remisión de la investigación a la ARL en 15 días (Res. 1401 Art. 14).
+- **Equipo investigador (Res. 1401 Art. 7)**: jefe inmediato, COPASST o vigía y responsable del SG-SST; en graves y mortales, además un profesional con licencia en SST.
 - **GTC 45**: NP = ND × NE, NR = NP × NC, nivel I (600–4000), II (150–500), III (40–120), IV (20).
 - **Indicadores**: frecuencia, severidad, mortalidad, prevalencia, incidencia y ausentismo con las fórmulas del Art. 30.
 

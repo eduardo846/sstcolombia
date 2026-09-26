@@ -11,7 +11,8 @@ BEGIN
     'trabajadores','nomina_mensual','autoevaluaciones','autoevaluacion_items','plan_anual',
     'matriz_legal','peligros','eventos','enfermedades_laborales','ausentismo',
     'evaluaciones_medicas','capacitaciones','asistencias','epp_entregas','inspecciones',
-    'comites','comite_miembros','reuniones_comite','acciones','documentos']
+    'comites','comite_miembros','reuniones_comite','acciones','documentos',
+    'planes_emergencia','simulacros','gestion_cambio','contratistas','auditorias','revisiones_direccion']
   LOOP
     EXECUTE format('ALTER TABLE api.%I ALTER COLUMN empresa_id SET DEFAULT app.empresa_actual()', t);
     EXECUTE format('ALTER TABLE api.%I ENABLE ROW LEVEL SECURITY', t);
@@ -67,7 +68,24 @@ SELECT ev.*,
             CASE WHEN ev.fecha_investigacion <= ev.fecha_evento + 15 THEN 'a_tiempo' ELSE 'extemporanea' END
        WHEN current_date > ev.fecha_evento + 15 THEN 'vencida'
        ELSE 'pendiente' END AS estado_investigacion,
-  (ev.tipo IN ('accidente_grave','accidente_mortal') AND ev.fecha_reporte_mintrabajo IS NULL) AS falta_reporte_mintrabajo
+  (ev.tipo IN ('accidente_grave','accidente_mortal') AND ev.fecha_reporte_mintrabajo IS NULL) AS falta_reporte_mintrabajo,
+  -- Dec. 1072 Art. 2.2.4.1.7: graves y mortales a la Dirección Territorial en 2 días hábiles
+  CASE WHEN ev.tipo NOT IN ('accidente_grave','accidente_mortal') THEN 'no_requiere'
+       WHEN ev.fecha_reporte_mintrabajo IS NOT NULL THEN
+            CASE WHEN ev.fecha_reporte_mintrabajo <= app.sumar_dias_habiles(ev.fecha_evento, 2)
+                 THEN 'a_tiempo' ELSE 'extemporaneo' END
+       WHEN current_date > app.sumar_dias_habiles(ev.fecha_evento, 2) THEN 'vencido'
+       ELSE 'pendiente' END AS estado_reporte_mintrabajo,
+  -- Res. 1401/2007 Art. 14: investigación de graves y mortales remitida a la ARL en 15 días
+  CASE WHEN ev.tipo NOT IN ('accidente_grave','accidente_mortal') THEN 'no_requiere'
+       WHEN ev.fecha_remision_arl IS NOT NULL THEN
+            CASE WHEN ev.fecha_remision_arl <= ev.fecha_evento + 15 THEN 'a_tiempo' ELSE 'extemporanea' END
+       WHEN current_date > ev.fecha_evento + 15 THEN 'vencida'
+       ELSE 'pendiente' END AS estado_remision_arl,
+  -- Res. 1401/2007 Art. 7: jefe inmediato, COPASST o vigía y responsable del SG-SST;
+  -- en graves y mortales, también un profesional con licencia en SST
+  (ev.inv_jefe_inmediato AND ev.inv_copasst AND ev.inv_responsable_sst
+   AND (ev.tipo NOT IN ('accidente_grave','accidente_mortal') OR ev.inv_profesional_licencia)) AS equipo_completo
 FROM api.eventos ev
 LEFT JOIN api.trabajadores t ON t.id = ev.trabajador_id;
 
@@ -158,6 +176,9 @@ SELECT
   (SELECT count(*) FROM api.peligros WHERE nivel_riesgo IN ('I','II')) AS riesgos_no_aceptables,
   (SELECT count(*) FROM api.v_eventos WHERE estado_reporte IN ('pendiente','vencido')) AS eventos_sin_reporte,
   (SELECT count(*) FROM api.v_eventos WHERE estado_investigacion IN ('pendiente','vencida')) AS investigaciones_pendientes,
+  (SELECT count(*) FROM api.v_eventos WHERE estado_reporte_mintrabajo IN ('pendiente','vencido')) AS reportes_mintrabajo_pendientes,
+  (SELECT count(*) FROM api.v_eventos WHERE estado_remision_arl IN ('pendiente','vencida')) AS remisiones_arl_pendientes,
+  (SELECT count(*) FROM api.v_eventos WHERE fecha_investigacion IS NOT NULL AND NOT equipo_completo) AS investigaciones_equipo_incompleto,
   (SELECT count(*) FROM api.acciones WHERE estado <> 'cerrada') AS acciones_abiertas,
   (SELECT count(*) FROM api.acciones WHERE estado <> 'cerrada' AND fecha_limite < current_date) AS acciones_vencidas,
   (SELECT count(*) FROM api.evaluaciones_medicas em
@@ -169,7 +190,13 @@ SELECT
                / nullif(count(*) FILTER (WHERE estado <> 'cancelada' AND fecha_programada <= current_date),0), 1)
      FROM api.plan_anual WHERE anio = extract(year FROM current_date)) AS cumplimiento_plan,
   (SELECT count(*) FROM api.matriz_legal WHERE cumplimiento IN ('no_cumple','parcial')) AS requisitos_legales_pendientes,
-  (SELECT count(*) FROM api.epp_entregas WHERE fecha_reposicion < current_date) AS epp_por_reponer;
+  (SELECT count(*) FROM api.epp_entregas WHERE fecha_reposicion < current_date) AS epp_por_reponer,
+  (SELECT count(*) FROM api.planes_emergencia WHERE proxima_revision < current_date) AS planes_emergencia_por_revisar,
+  (SELECT count(*) FROM api.simulacros WHERE estado = 'programada' AND fecha_programada < current_date) AS simulacros_vencidos,
+  (SELECT count(*) FROM api.auditorias WHERE estado = 'programada' AND fecha_programada < current_date) AS auditorias_vencidas,
+  (SELECT count(*) FROM api.revisiones_direccion WHERE estado = 'programada' AND fecha_programada < current_date) AS revisiones_vencidas,
+  (SELECT count(*) FROM api.contratistas
+     WHERE (fecha_fin IS NULL OR fecha_fin >= current_date) AND NOT (afiliacion_arl AND induccion_sst)) AS contratistas_sin_requisitos;
 
 GRANT SELECT ON api.v_empresa, api.v_peligros, api.v_eventos, api.v_autoevaluacion_resultado,
   api.v_indicadores_mensuales, api.v_indicadores_anuales, api.v_comites, api.v_dashboard TO authenticated;

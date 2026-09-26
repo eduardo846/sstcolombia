@@ -156,6 +156,18 @@ Registra las inspecciones (locativas, de extintores, botiquines, EPP, vehículos
 
 ---
 
+### Planes de emergencia y simulacros
+
+Registra un plan de prevención, preparación y respuesta ante emergencias por sede: amenazas, análisis de vulnerabilidad, recursos, si se divulgó y la fecha de la próxima revisión. En **Simulacros** programa y registra los ejercicios de cada plan; el Decreto 1072 exige al menos uno al año. El panel avisa si un plan pasó su fecha de revisión o si un simulacro programado no se ejecutó.
+
+### Gestión del cambio
+
+Antes de un cambio interno (proceso, instalación, método u organización) o externo (nueva norma, nuevo conocimiento), registra los peligros que genera, las medidas de control y si se informó a los trabajadores.
+
+### Contratistas y proveedores
+
+Registra cada contratista con el servicio, las fechas del contrato y la verificación de su afiliación a la ARL, la inducción en SST y la calificación de su SG-SST. El panel avisa si un contratista activo no tiene afiliación o inducción verificada.
+
 ## 8. Verificar (V)
 
 ### Accidentes e incidentes
@@ -166,8 +178,11 @@ Registra las inspecciones (locativas, de extintores, botiquines, EPP, vehículos
    - **Plazo de investigación**: 15 días calendario.
 3. Cuando reportes o investigues, registra las fechas. Las columnas **Reporte** e **Investigación** muestran si se hizo a tiempo, si está pendiente o si se hizo fuera de plazo.
 4. Completa la investigación con el equipo investigador, las causas inmediatas y básicas, las medidas de control y las lecciones aprendidas.
+5. Marca quiénes participaron en la investigación. La Res. 1401 exige al jefe inmediato o supervisor, al COPASST o Vigía y al responsable del SG-SST. En accidentes graves y mortales también debe participar un profesional con licencia en SST. La columna **Equipo completo** indica si se cumplió.
 
-Los accidentes graves y mortales también deben reportarse a la Dirección Territorial del Ministerio del Trabajo. Para eso existe el campo *Reporte a Mintrabajo*.
+Los accidentes graves y mortales tienen dos obligaciones más, cada una con su columna de estado:
+- **Mintrabajo**: reporte a la Dirección Territorial del Ministerio del Trabajo en 2 días hábiles. Registra la fecha en *Reporte a Mintrabajo*.
+- **Remisión ARL**: envío del informe de investigación a la ARL en 15 días. Registra la fecha en *Investigación remitida a ARL*.
 
 ### Enfermedades laborales
 
@@ -195,6 +210,14 @@ Muestra los indicadores mínimos del Art. 30 de la Res. 0312, con su fórmula:
 Cambia el año con el selector y descarga los datos con **Exportar CSV**.
 
 ---
+
+### Auditorías
+
+Programa la auditoría anual del SG-SST y registra su alcance, el auditor, si se planificó con el COPASST, los hallazgos y las conclusiones. Crea en **Acciones de mejora** una acción con origen *Auditoría* por cada hallazgo.
+
+### Revisión por la dirección
+
+La alta dirección revisa el SG-SST al menos una vez al año. Registra los aspectos revisados, las conclusiones, las decisiones y si los resultados se comunicaron al COPASST. El panel avisa si una auditoría o una revisión programada pasó su fecha sin realizarse.
 
 ## 9. Actuar (A)
 
