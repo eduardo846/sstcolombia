@@ -15,6 +15,7 @@
   --azul-t: #e1ebf6;
   --franja: repeating-linear-gradient(-45deg, var(--amarillo) 0 12px, var(--pizarra) 12px 24px);   /* advertencia */
   --r: 3px;
+  --topbar-h: 52px;
   --sans: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --cond: 'Barlow Semi Condensed', 'Barlow', system-ui, sans-serif;
   font-size: 15px;
@@ -208,15 +209,16 @@ input.mini { padding: .28rem .5rem; font-size: .86rem; margin-top: .3rem; max-wi
 
 /* ---------- Móvil ---------- */
 @media (max-width: 900px) {
-  .shell { grid-template-columns: 1fr; }
-  .topbar { display: flex; align-items: center; gap: .8rem; background: var(--pizarra); color: #fff; padding: .6rem 1rem; position: sticky; top: 0; z-index: 15; }
+  /* La barra tiene alto fijo: si la fila se estira con contenido corto, tapa el menú */
+  .shell { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .topbar { display: flex; align-items: center; gap: .8rem; background: var(--pizarra); color: #fff; height: var(--topbar-h); padding: 0 1rem; position: sticky; top: 0; z-index: 15; }
   .topbar-title { font-family: var(--cond); font-weight: 700; font-size: 1.15rem; }
   .menu-btn { background: none; border: 1px solid #50616b; color: #fff; border-radius: var(--r); padding: .35rem .7rem; font: inherit; }
-  .sidebar { display: none; position: fixed; top: 48px; left: 0; right: 0; bottom: 0; height: auto; z-index: 14; }
+  .sidebar { display: none; position: fixed; top: var(--topbar-h); left: 0; right: 0; bottom: 0; height: auto; z-index: 14; }
   .sidebar.open { display: flex; }
   .estandar { grid-template-columns: 1fr; }
   .score-num { font-size: 3rem; }
-  .sticky-mini { top: 48px; }
+  .sticky-mini { top: var(--topbar-h); }
 }
 
 /* ---------- Impresión (autoevaluación como evidencia) ---------- */
