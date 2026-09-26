@@ -34,13 +34,16 @@ jobs:
           set -euo pipefail
           test -n "$NETLIFY_AUTH_TOKEN" || { echo "::error::Configure the NETLIFY_AUTH_TOKEN repository secret."; exit 1; }
           test -n "$NETLIFY_SITE_ID" || { echo "::error::Configure the NETLIFY_SITE_ID repository secret."; exit 1; }
-          case "$VITE_API_URL" in
-            https://*) ;;
-            *) echo "::error::Configure the VITE_API_URL repository variable with the HTTPS PostgREST URL."; exit 1 ;;
-          esac
-          case "$VITE_API_URL" in
-            */) echo "::error::VITE_API_URL must not end with a slash."; exit 1 ;;
-          esac
+          # VITE_API_URL es opcional: sin ella, el frontend usa /api y Netlify lo redirige a Render.
+          if [[ -n "$VITE_API_URL" ]]; then
+            case "$VITE_API_URL" in
+              https://*) ;;
+              *) echo "::error::VITE_API_URL must be the HTTPS PostgREST URL."; exit 1 ;;
+            esac
+            case "$VITE_API_URL" in
+              */) echo "::error::VITE_API_URL must not end with a slash."; exit 1 ;;
+            esac
+          fi
 
       - name: Install dependencies
         working-directory: frontend
