@@ -286,6 +286,11 @@ CREATE TABLE api.eventos (
   fecha_reporte_mintrabajo  date,
   fecha_investigacion       date,
   equipo_investigador       text,
+  -- Res. 1401/2007 Art. 7: integrantes del equipo investigador
+  inv_jefe_inmediato        boolean NOT NULL DEFAULT false,
+  inv_copasst               boolean NOT NULL DEFAULT false,
+  inv_responsable_sst       boolean NOT NULL DEFAULT false,
+  inv_profesional_licencia  boolean NOT NULL DEFAULT false,   -- obligatorio en accidentes graves y mortales
   causas_inmediatas         text,
   causas_basicas            text,
   medidas_control           text,
@@ -443,4 +448,96 @@ CREATE TABLE api.documentos (   -- Dec. 1072 Art. 2.2.4.6.12 y 2.2.4.6.13
   ubicacion         text,
   proxima_revision  date,
   UNIQUE (empresa_id, codigo, version)
+);
+
+-- ---------- Decreto 1072 de 2015: módulos complementarios -----------
+-- Plan de prevención, preparación y respuesta ante emergencias (Art. 2.2.4.6.25)
+CREATE TABLE api.planes_emergencia (
+  id                    int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  empresa_id            int NOT NULL REFERENCES api.empresas(id),
+  sede                  text NOT NULL,
+  fecha_elaboracion     date NOT NULL,
+  fecha_actualizacion   date,
+  amenazas              text,
+  vulnerabilidad        text,
+  recursos              text,
+  divulgado             boolean NOT NULL DEFAULT false,
+  ubicacion             text,
+  proxima_revision      date
+);
+
+CREATE TABLE api.simulacros (
+  id                    int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  empresa_id            int NOT NULL REFERENCES api.empresas(id),
+  plan_id               int REFERENCES api.planes_emergencia(id),
+  escenario             text NOT NULL,
+  fecha_programada      date NOT NULL,
+  fecha_ejecucion       date,
+  participantes         int CHECK (participantes >= 0),
+  tiempo_respuesta_min  numeric(6,1) CHECK (tiempo_respuesta_min >= 0),
+  hallazgos             text,
+  estado                text NOT NULL DEFAULT 'programada' CHECK (estado IN ('programada','ejecutada','cancelada'))
+);
+
+-- Gestión del cambio (Art. 2.2.4.6.26)
+CREATE TABLE api.gestion_cambio (
+  id                      int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  empresa_id              int NOT NULL REFERENCES api.empresas(id),
+  fecha                   date NOT NULL DEFAULT current_date,
+  origen                  text NOT NULL CHECK (origen IN ('interno','externo')),
+  descripcion             text NOT NULL,
+  peligros_identificados  text,
+  medidas                 text,
+  informado_trabajadores  boolean NOT NULL DEFAULT false,
+  responsable             text,
+  fecha_implementacion    date,
+  estado                  text NOT NULL DEFAULT 'abierta' CHECK (estado IN ('abierta','en_proceso','cerrada'))
+);
+
+-- Contratistas y proveedores (Arts. 2.2.4.6.27 y 2.2.4.6.28)
+CREATE TABLE api.contratistas (
+  id                    int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  empresa_id            int NOT NULL REFERENCES api.empresas(id),
+  razon_social          text NOT NULL,
+  nit                   text,
+  servicio              text NOT NULL,
+  fecha_inicio          date,
+  fecha_fin             date,
+  trabajadores          int CHECK (trabajadores >= 0),
+  afiliacion_arl        boolean NOT NULL DEFAULT false,
+  induccion_sst         boolean NOT NULL DEFAULT false,
+  calificacion_sgsst    numeric(5,2) CHECK (calificacion_sgsst BETWEEN 0 AND 100),
+  fecha_verificacion    date,
+  observaciones         text
+);
+
+-- Auditoría anual con participación del COPASST (Arts. 2.2.4.6.29 y 2.2.4.6.30)
+CREATE TABLE api.auditorias (
+  id                    int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  empresa_id            int NOT NULL REFERENCES api.empresas(id),
+  anio                  int NOT NULL,
+  alcance               text NOT NULL,
+  auditor               text,
+  fecha_programada      date NOT NULL,
+  fecha_ejecucion       date,
+  participa_copasst     boolean NOT NULL DEFAULT false,
+  hallazgos             text,
+  conclusiones          text,
+  informe               text,
+  estado                text NOT NULL DEFAULT 'programada' CHECK (estado IN ('programada','ejecutada','cancelada'))
+);
+
+-- Revisión por la alta dirección, mínimo una vez al año (Art. 2.2.4.6.31)
+CREATE TABLE api.revisiones_direccion (
+  id                    int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  empresa_id            int NOT NULL REFERENCES api.empresas(id),
+  anio                  int NOT NULL,
+  fecha_programada      date NOT NULL,
+  fecha_ejecucion       date,
+  participantes         text,
+  entradas              text,
+  conclusiones          text,
+  decisiones            text,
+  comunicada_copasst    boolean NOT NULL DEFAULT false,
+  estado                text NOT NULL DEFAULT 'programada' CHECK (estado IN ('programada','ejecutada','cancelada'))
 );
