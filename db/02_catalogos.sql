@@ -2,6 +2,7 @@
 -- Catálogo de Estándares Mínimos · Resolución 0312 de 2019 (Art. 16 y 27)
 -- aplica_7: Art. 3 (≤10 trabajadores, riesgo I-III)
 -- aplica_21: Art. 9 (11-50 trabajadores, riesgo I-III)
+-- aplica_3: Art. 7 (unidades agropecuarias, ≤10 trabajadores permanentes, riesgo I-III)
 -- Validar la asignación 7/21 contra el texto oficial antes de auditorías.
 -- =====================================================================
 INSERT INTO api.estandares_0312 (codigo, ciclo, grupo, subgrupo, descripcion, peso, aplica_7, aplica_21, orden) VALUES
@@ -65,6 +66,13 @@ INSERT INTO api.estandares_0312 (codigo, ciclo, grupo, subgrupo, descripcion, pe
 ('7.1.2','A','Mejoramiento (10%)','Acciones preventivas y correctivas con base en los resultados del SG-SST (10%)','Acciones de mejora conforme a revisión de la alta dirección',2.5,false,false,58),
 ('7.1.3','A','Mejoramiento (10%)','Acciones preventivas y correctivas con base en los resultados del SG-SST (10%)','Acciones de mejora con base en investigaciones de accidentes de trabajo y enfermedades laborales',2.5,false,false,59),
 ('7.1.4','A','Mejoramiento (10%)','Acciones preventivas y correctivas con base en los resultados del SG-SST (10%)','Elaboración del plan de mejoramiento e implementación de medidas y acciones correctivas solicitadas por autoridades y ARL',2.5,false,false,60);
+
+-- Res. 0312 Art. 7: unidades de producción agropecuaria con 10 o menos trabajadores
+-- permanentes y riesgo I-III. No forman parte de la tabla de 60 (Art. 8: riesgo IV-V usa los 60)
+INSERT INTO api.estandares_0312 (codigo, ciclo, grupo, subgrupo, descripcion, peso, aplica_7, aplica_21, aplica_3, orden) VALUES
+('UPA.1','H','Unidades de producción agropecuaria (100%)','Estándares mínimos Art. 7 (100%)','Identificar los peligros en los procesos productivos, evaluar y valorar los riesgos y establecer los controles',33.34,false,false,true,61),
+('UPA.2','H','Unidades de producción agropecuaria (100%)','Estándares mínimos Art. 7 (100%)','Desarrollar actividades para prevenir accidentes de trabajo y enfermedades laborales',33.33,false,false,true,62),
+('UPA.3','H','Unidades de producción agropecuaria (100%)','Estándares mínimos Art. 7 (100%)','Proteger la seguridad y salud de todas las personas que realizan actividades en la unidad',33.33,false,false,true,63);
 
 -- =====================================================================
 -- Catálogo normativo base para la matriz legal.

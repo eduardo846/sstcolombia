@@ -10,6 +10,7 @@ const CAMPOS = [
   { k: 'actividad_economica', l: 'Actividad económica', t: 'text' },
   { k: 'clase_riesgo', l: 'Clase de riesgo', t: 'select', req: true, options: [['1', 'I'], ['2', 'II'], ['3', 'III'], ['4', 'IV'], ['5', 'V']] },
   { k: 'numero_trabajadores', l: 'Número de trabajadores', t: 'number', req: true },
+  { k: 'unidad_agropecuaria', l: 'Unidad de producción agropecuaria', t: 'bool' },
   { k: 'arl', l: 'ARL', t: 'text' },
   { k: 'representante_legal', l: 'Representante legal', t: 'text' },
   { k: 'responsable_sst', l: 'Responsable del SG-SST', t: 'text' },
@@ -61,7 +62,7 @@ export default function Empresa() {
       <header className="page-head">
         <div>
           <h1>Empresa y usuarios</h1>
-          <p className="norma">Con clase de riesgo {emp.clase_riesgo} y {emp.numero_trabajadores} trabajadores aplican <b>{emp.estandares_aplicables} estándares</b> (Res. 0312/2019 Arts. 3, 9 y 16).
+          <p className="norma">Con clase de riesgo {emp.clase_riesgo} y {emp.numero_trabajadores} trabajadores aplican <b>{emp.estandares_aplicables} estándares</b> (Res. 0312/2019 Arts. 3, 7, 9 y 16).
             Hay {emp.trabajadores_activos} trabajadores activos registrados.</p>
         </div>
       </header>

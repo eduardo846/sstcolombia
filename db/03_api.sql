@@ -263,7 +263,8 @@ BEGIN
   VALUES (p_anio, tipo, app.claims()->>'nombre') RETURNING id INTO nueva;
   INSERT INTO api.autoevaluacion_items (autoevaluacion_id, codigo)
   SELECT nueva, codigo FROM api.estandares_0312
-  WHERE tipo = '60' OR (tipo = '21' AND aplica_21) OR (tipo = '7' AND aplica_7)
+  WHERE (tipo = '60' AND NOT aplica_3) OR (tipo = '21' AND aplica_21) OR (tipo = '7' AND aplica_7)
+     OR (tipo = '3' AND aplica_3)
   ORDER BY orden;
   RETURN nueva;
 END $$;

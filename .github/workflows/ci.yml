@@ -34,6 +34,23 @@ jobs:
             curl --fail --silent --show-error --retry 30 --retry-connrefused --retry-delay 2 --retry-max-time 60 "$url" --output /dev/null
           done
 
+      - name: Check database migrations
+        run: |
+          set -euo pipefail
+          psql() { docker compose exec -T db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -tA "$@"; }
+          # Las migraciones deben poder correr sobre una base ya actualizada
+          for f in db/migraciones/*.sql; do
+            psql -f "/docker-entrypoint-initdb.d/migraciones/$(basename "$f")"
+            psql -f "/docker-entrypoint-initdb.d/migraciones/$(basename "$f")"
+          done
+          test "$(psql -c "SELECT count(*) FROM api.estandares_0312 WHERE NOT aplica_3")" = 60
+          test "$(psql -c "SELECT count(*) FROM api.estandares_0312 WHERE aplica_3")" = 3
+          # Tabla de estándares según unidad agropecuaria, clase de riesgo y trabajadores
+          test "$(psql -c "SELECT string_agg(app.tipo_estandares(jsonb_populate_record(NULL::api.empresas,
+                   jsonb_build_object('unidad_agropecuaria', agro, 'clase_riesgo', riesgo, 'numero_trabajadores', n))), ',' ORDER BY i)
+                 FROM (VALUES (1, true, 1, 10), (2, true, 4, 10), (3, false, 1, 10), (4, true, 3, 30), (5, false, 5, 5))
+                   v(i, agro, riesgo, n)")" = "3,60,7,21,60"
+
       - name: Show service logs on failure
         if: failure()
         run: docker compose logs --no-color

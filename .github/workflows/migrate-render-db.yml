@@ -1,0 +1,79 @@
+name: Migrate Render database
+
+on:
+  push:
+    branches: [deployment]
+    paths: ['db/migraciones/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: render-database
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Apply pending migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RENDER_DATABASE_URL: ${{ secrets.RENDER_DATABASE_URL }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+
+      - name: Configure PostgreSQL connection
+        run: |
+          set -euo pipefail
+          test -n "$RENDER_DATABASE_URL" || { echo "::error::Configure the RENDER_DATABASE_URL repository secret."; exit 1; }
+
+          python3 - <<'PY'
+          import os
+          from urllib.parse import unquote, urlsplit
+
+          url = urlsplit(os.environ["RENDER_DATABASE_URL"])
+          values = {
+              "PGHOST": url.hostname or "",
+              "PGPORT": str(url.port or 5432),
+              "PGDATABASE": unquote(url.path.lstrip("/")),
+              "PGUSER": unquote(url.username or ""),
+              "PGPASSWORD": unquote(url.password or ""),
+              "PGSSLMODE": "require",
+          }
+          if not all(values[k] for k in ("PGHOST", "PGDATABASE", "PGUSER", "PGPASSWORD")):
+              raise SystemExit("RENDER_DATABASE_URL must contain host, database, user, and password.")
+          if values["PGUSER"] == "authenticator":
+              raise SystemExit("Use the Render PostgreSQL admin user, not authenticator.")
+          if "\n" in values["PGPASSWORD"] or "\r" in values["PGPASSWORD"]:
+              raise SystemExit("The database password contains an unsupported newline.")
+          print(f"::add-mask::{values['PGPASSWORD']}")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env_file:
+              for key, value in values.items():
+                  env_file.write(f"{key}={value}\n")
+          PY
+
+      - name: Apply pending migrations
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -qc "CREATE TABLE IF NOT EXISTS app.migraciones (
+            nombre text PRIMARY KEY, aplicada timestamptz NOT NULL DEFAULT now())"
+
+          for f in db/migraciones/*.sql; do
+            nombre=$(basename "$f")
+            aplicada=$(psql -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM app.migraciones WHERE nombre = '$nombre'")
+            if [[ "$aplicada" == "1" ]]; then
+              echo "Ya aplicada: $nombre"
+              continue
+            fi
+            echo "Aplicando: $nombre"
+            psql -v ON_ERROR_STOP=1 -f "$f"
+            psql -v ON_ERROR_STOP=1 -qc "INSERT INTO app.migraciones (nombre) VALUES ('$nombre')"
+          done

@@ -99,9 +99,10 @@ CREATE TABLE api.empresas (
 );
 ALTER TABLE auth.usuarios ADD FOREIGN KEY (empresa_id) REFERENCES api.empresas(id);
 
--- Res. 0312/2019 Arts. 2, 3, 9 y 16: qué tabla de estándares aplica
+-- Res. 0312/2019 Arts. 3, 7, 8, 9 y 16: qué tabla de estándares aplica
 CREATE OR REPLACE FUNCTION app.tipo_estandares(e api.empresas) RETURNS text LANGUAGE sql STABLE AS $$
   SELECT CASE
+    WHEN e.unidad_agropecuaria AND e.clase_riesgo <= 3 AND e.numero_trabajadores <= 10 THEN '3'
     WHEN e.clase_riesgo <= 3 AND e.numero_trabajadores <= 10 THEN '7'
     WHEN e.clase_riesgo <= 3 AND e.numero_trabajadores <= 50 THEN '21'
     ELSE '60' END
@@ -117,6 +118,7 @@ CREATE TABLE api.estandares_0312 (
   peso         numeric(5,2) NOT NULL,
   aplica_7     boolean NOT NULL DEFAULT false,
   aplica_21    boolean NOT NULL DEFAULT false,
+  aplica_3     boolean NOT NULL DEFAULT false,   -- solo unidades agropecuarias (Art. 7), fuera de la tabla de 60
   orden        int NOT NULL
 );
 
@@ -173,7 +175,7 @@ CREATE TABLE api.autoevaluaciones (
   empresa_id       int NOT NULL REFERENCES api.empresas(id),
   anio             int NOT NULL,
   fecha            date NOT NULL DEFAULT current_date,
-  tipo_estandares  text NOT NULL CHECK (tipo_estandares IN ('7','21','60')),
+  tipo_estandares  text NOT NULL CHECK (tipo_estandares IN ('3','7','21','60')),
   responsable      text,
   estado           text NOT NULL DEFAULT 'borrador' CHECK (estado IN ('borrador','cerrada')),
   observaciones    text,
