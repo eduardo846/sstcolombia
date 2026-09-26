@@ -2,6 +2,8 @@
 
 Sistema de Gestión de Seguridad y Salud en el Trabajo alineado con el **Decreto 1072 de 2015** (Libro 2, Parte 2, Título 4, Capítulo 6) y la **Resolución 0312 de 2019** (Estándares Mínimos), organizado por el ciclo PHVA.
 
+📘 **[Manual de usuario](docs/MANUAL_USUARIO.md)**: uso de cada módulo, roles y primeros pasos.
+
 ## Arranque rápido
 
 ```bash
@@ -20,21 +22,71 @@ La API queda en http://localhost:3000 (documentación OpenAPI en la raíz).
 
 El workflow de GitHub Actions en `.github/workflows/ci.yml` construye y levanta los servicios con Docker Compose en cada push y pull request, y comprueba que la API y el frontend respondan. También se puede ejecutar manualmente desde la pestaña **Actions** con **Run workflow**. Usa credenciales temporales de prueba; no despliega la aplicación ni conserva los datos al terminar.
 
-## Despliegue del frontend en Netlify
+## Despliegue en la nube
 
-El archivo `netlify.toml` configura el build de React y el fallback de rutas de la SPA. El workflow `.github/workflows/netlify-deploy.yml` publica automáticamente la rama `deployment` en el sitio Netlify configurado y también permite un despliegue manual. Configura en GitHub los secretos de repositorio `NETLIFY_AUTH_TOKEN` y `NETLIFY_SITE_ID`, y la variable de repositorio `VITE_API_URL` con la URL HTTPS pública de PostgREST, sin una barra final (por ejemplo, `https://api.ejemplo.com`). El frontend no incluye el backend: PostgreSQL y PostgREST deben estar desplegados por separado, con CORS habilitado para el dominio de Netlify. No guardes tokens en el repositorio ni los compartas en mensajes.
+```
+Navegador ──► Netlify (React SPA) ──/api/*──► Render: sgsst-api-virginia (PostgREST) ──► Render PostgreSQL 18
+                                   proxy                  Virginia · plan free              sstcolombiabd · Virginia
+```
+
+Los despliegues salen de la rama **`deployment`**. Todo push a esa rama redespliega la API en Render y el frontend en Netlify.
+
+| Componente | Dónde | Detalle |
+|---|---|---|
+| Base de datos | Render PostgreSQL `sstcolombiabd` (workspace *pruebas*, Virginia) | Plan free: **caduca el 2026-10-26**. Antes de esa fecha, pásala a un plan de pago o haz un respaldo |
+| API | Render web service `sgsst-api-virginia` | https://sgsst-api-virginia.onrender.com · Docker (`backend/Dockerfile`) · health check `/` |
+| Frontend | Netlify | Build según `netlify.toml`, desde Git o con el workflow `netlify-deploy.yml` |
+
+### Frontend en Netlify
+
+`netlify.toml` compila `frontend/` y define dos reglas:
+
+- **`/api/*` → `https://sgsst-api-virginia.onrender.com/:splat`**: proxy a PostgREST. El navegador solo habla con el dominio de Netlify, así que no hace falta configurar CORS.
+- **`/*` → `/index.html`**: fallback de rutas de la SPA.
+
+El workflow `.github/workflows/netlify-deploy.yml` publica la rama `deployment`. Para usarlo, crea en GitHub los secretos de repositorio `NETLIFY_AUTH_TOKEN` y `NETLIFY_SITE_ID`. La variable de repositorio `VITE_API_URL` es **opcional**:
+
+- **Sin ella**, el frontend llama a `/api` y usa el proxy. Es la configuración recomendada.
+- **Con ella**, el frontend llama directamente a esa URL HTTPS. Debe ir sin barra final, y en ese caso hay que configurar CORS en la API.
+
+Si cambia la URL de la API, actualiza el proxy en `netlify.toml`.
 
 ### API en Render
 
-El archivo `render.yaml` permite crear el servicio PostgREST `sgsst-api-virginia` en Render como un Blueprint, en la región Virginia y usando el Dockerfile de `backend/`. En Render, sincroniza el Blueprint desde la rama `deployment` y configura los tres valores secretos solicitados: `PGRST_DB_URI` (URL interna de la base PostgreSQL, obtenida en Render), `PGRST_JWT_SECRET` (el mismo secreto que se guardó en `auth.config` al ejecutar `db/00_roles.sh`) y `PGRST_SERVER_CORS_ALLOWED_ORIGINS` (origen exacto del sitio Netlify, por ejemplo `https://nombre-del-sitio.netlify.app`). El servicio requiere que el esquema ya esté inicializado y que exista al menos un administrador. El plan `free` puede suspender el servicio tras inactividad y demorar la primera solicitud al reactivarse. Crear este servicio nuevo no cambia ni elimina el anterior ni migra la base de datos.
+Variables de entorno del servicio `sgsst-api-virginia`:
 
-Para inicializar una base Render vacía de forma manual desde GitHub Actions, crea estos secretos de repositorio en **Settings → Secrets and variables → Actions**:
+| Variable | Valor |
+|---|---|
+| `PGRST_DB_URI` | `postgresql://authenticator:<contraseña>@<host interno de la base>/<base>`. Siempre con el usuario **`authenticator`**, no con el administrador |
+| `PGRST_JWT_SECRET` | El mismo valor guardado en `auth.config` (`clave = 'jwt_secret'`) |
+| `PGRST_DB_SCHEMAS` | `api` |
+| `PGRST_DB_ANON_ROLE` | `web_anon` |
+| `PGRST_DB_MAX_ROWS` | `2000` |
+| `PGRST_SERVER_CORS_ALLOWED_ORIGINS` | Opcional: el origen exacto del sitio si se usa `VITE_API_URL`. Si no se define, PostgREST acepta cualquier origen |
 
-- `RENDER_DATABASE_URL`: URL externa de PostgreSQL con el usuario administrador de la base y SSL habilitado.
-- `AUTHENTICATOR_PASSWORD`: genera localmente con `openssl rand -hex 24`.
-- `JWT_SECRET`: genera localmente con `openssl rand -hex 32`.
+`render.yaml` describe el mismo servicio como Blueprint. El servicio actual se creó directamente, no desde el Blueprint.
 
-No compartas ni confirmes los valores en el chat. En **Actions → Initialize Render database → Run workflow**, selecciona `deployment`. El workflow se detiene si ya existe el esquema `api`, ejecuta los scripts `db/00_roles.sh` a `db/03_api.sql` y verifica que se hayan creado objetos. Luego configura `PGRST_DB_URI` en Render usando el host de base de datos accesible desde la región del servicio y la contraseña `AUTHENTICATOR_PASSWORD`; configura `PGRST_JWT_SECRET` con el valor `JWT_SECRET`. Ejecuta este workflow solo una vez en una base vacía.
+**Diagnóstico rápido**: en el log de arranque debe aparecer `Schema cache loaded 31 Relations, ... 7 Functions`. Si aparece `0 Relations`, la base a la que apunta `PGRST_DB_URI` no está inicializada, el health check falla y Render marca el despliegue como *Timed Out*.
+
+El plan free suspende el servicio tras un rato de inactividad. La primera petición después puede tardar entre 30 y 60 segundos.
+
+### Inicializar una base nueva
+
+Solo hace falta si se crea una base vacía, por ejemplo al migrar de plan. En **Settings → Secrets and variables → Actions → Secrets**, crea:
+
+- `RENDER_DATABASE_URL`: la URL **externa** de la base (Render → base → Connect → External), con el usuario **administrador** de Render. Si lleva el usuario `authenticator`, el workflow se niega a ejecutarse.
+- `AUTHENTICATOR_PASSWORD`: genérala con `openssl rand -hex 24`.
+- `JWT_SECRET`: genérala con `openssl rand -hex 32`.
+
+Luego ejecuta **Actions → Initialize Render database → Run workflow** sobre la rama `deployment`. El workflow:
+
+1. se detiene si ya existe el esquema `api`;
+2. ejecuta de `db/00_roles.sh` a `db/03_api.sql`;
+3. verifica que se hayan creado los objetos.
+
+Después, configura en Render `PGRST_DB_URI` con `AUTHENTICATOR_PASSWORD` y `PGRST_JWT_SECRET` con `JWT_SECRET`.
+
+Si se pierde la contraseña de `authenticator`, puedes cambiarla conectándote como administrador con `\password authenticator` y actualizar `PGRST_DB_URI`. Los secretos de GitHub no se pueden volver a leer, así que guarda los valores en un gestor de contraseñas.
 
 No cargues datos reales ni uses esta instancia para información de salud laboral hasta configurar y verificar el backend, sus credenciales, HTTPS, respaldos y controles de acceso. Las credenciales de demostración incluidas en el repositorio son solo para pruebas.
 
@@ -101,7 +153,13 @@ docker compose exec db psql -U postgres -d sgsst -c \
   "SELECT auth.alta_empresa('900111222-3','Mi Empresa S.A.S.',2::smallint,35,'sst@miempresa.co','Nombre Responsable','ClaveSegura2026');"
 ```
 
-Para crear la primera cuenta de administrador en una base Render ya inicializada, ejecuta `psql` desde Git Bash usando la conexión externa SSL de Render. Establece `PGHOST`, `PGPORT`, `PGDATABASE` y `PGUSER` con los valores de **Connect → External connection**; `psql` pedirá la contraseña de PostgreSQL. Después:
+Para crear la primera cuenta de administrador en una base Render ya inicializada, usa `psql` con la conexión externa SSL de Render. Si no tienes `psql` instalado, abre uno con Docker desde la raíz del repo, en Git Bash:
+
+```bash
+docker run -it --rm -v "$(pwd -W)/db:/db" -w / postgres:18 bash
+```
+
+Establece `PGHOST`, `PGPORT`, `PGDATABASE` y `PGUSER` con los valores de **Connect → External**; `psql` pedirá la contraseña de PostgreSQL. Después:
 
 ```bash
 export PGSSLMODE=require
