@@ -6,6 +6,13 @@
 [build.environment]
   NODE_VERSION = "20"
 
+# Proxy a PostgREST en Render: el frontend usa /api cuando no se define VITE_API_URL
+[[redirects]]
+  from = "/api/*"
+  to = "https://sgsst-api-virginia.onrender.com/:splat"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
