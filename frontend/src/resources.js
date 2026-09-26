@@ -1,7 +1,7 @@
 // Configuración declarativa de cada módulo del SG-SST.
 // t: text | textarea | number | date | time | bool | select | ref
 // list: se muestra en la tabla · ro: solo lectura (calculado en la base)
-// tone: función valor -> 'rojo' | 'amarillo' | 'verde' | 'gris' para resaltar
+// tone: función valor -> 'rojo' | 'amarillo' | 'verde' | 'azul' | 'gris' para resaltar
 
 const opts = (...pares) => pares.map(p => (Array.isArray(p) ? p : [p, p]));
 
@@ -12,6 +12,7 @@ const tonoEstado = v => ({
   vencido: 'rojo', vencida: 'rojo', no_cumple: 'rojo', no_apto: 'rojo', extemporaneo: 'rojo', extemporanea: 'rojo',
   pendiente: 'amarillo', parcial: 'amarillo', en_proceso: 'amarillo', reprogramada: 'amarillo',
   apto_con_restricciones: 'amarillo', en_ejecucion: 'amarillo', abierta: 'amarillo',
+  programada: 'azul',
 }[v]);
 
 export const REFS = {
