@@ -52,6 +52,7 @@ a { color: var(--verde); }
 .nav-foot { margin-top: auto; padding-top: 1rem; border-top: 1px solid #33444f; }
 .who { margin: .6rem .5rem; font-size: .9rem; color: #fff; }
 .who small { display: block; color: #9fb0ba; }
+.credito { margin: .9rem .5rem 0; font-size: .75rem; color: #7f919c; }
 
 .main { padding: 2rem clamp(1rem, 3vw, 2.5rem) 4rem; min-width: 0; }
 .page { max-width: 1250px; display: flex; flex-direction: column; gap: 1.1rem; }

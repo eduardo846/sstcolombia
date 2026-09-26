@@ -35,6 +35,7 @@ export default function Layout({ children }) {
           <NavLink to="/empresa" className="nav-link">Empresa y usuarios</NavLink>
           <p className="who">{user.nombre}<small>{ROLES[user.app_rol] ?? user.app_rol}</small></p>
           <button className="btn ghost small" onClick={logout}>Cerrar sesión</button>
+          <p className="credito">Elaborado por el Ing. Hector Ramirez</p>
         </div>
       </nav>
       <main className="main">{children}</main>
