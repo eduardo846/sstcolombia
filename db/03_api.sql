@@ -235,6 +235,22 @@ END $$;
 REVOKE ALL ON FUNCTION api.cambiar_password(text, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION api.cambiar_password(text, text) TO authenticated;
 
+-- ---------- RPC: diagnóstico de hora ---------------------------------
+-- GET /rpc/hora_servidor: zona horaria y fecha que usa la base frente a la hora de Colombia
+CREATE OR REPLACE FUNCTION api.hora_servidor() RETURNS json
+LANGUAGE sql STABLE AS $$
+  SELECT json_build_object(
+    'zona_horaria_base', current_setting('TimeZone'),
+    'hora_base', to_char(now(), 'YYYY-MM-DD HH24:MI:SS TZ'),
+    'fecha_base', current_date,
+    'hora_colombia', to_char(now() AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD HH24:MI:SS'),
+    'fecha_colombia', (now() AT TIME ZONE 'America/Bogota')::date,
+    'fecha_coincide', current_date = (now() AT TIME ZONE 'America/Bogota')::date,
+    'zona_correcta', current_setting('TimeZone') = 'America/Bogota'
+  )
+$$;
+GRANT EXECUTE ON FUNCTION api.hora_servidor() TO web_anon, authenticated;
+
 -- ---------- RPC: operaciones del SG-SST ------------------------------
 -- Crea la autoevaluación del año con los estándares que aplican a la empresa
 CREATE OR REPLACE FUNCTION api.iniciar_autoevaluacion(p_anio int) RETURNS int
