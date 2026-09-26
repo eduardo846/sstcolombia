@@ -10,6 +10,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN CREATE ROLE authenticated NOLOGIN; END IF;
   END \$\$;
   ALTER ROLE authenticator PASSWORD '${AUTHENTICATOR_PASSWORD}';
+  GRANT CONNECT ON DATABASE "${POSTGRES_DB}" TO authenticator;
   GRANT web_anon TO authenticator;
   GRANT authenticated TO authenticator;
 
