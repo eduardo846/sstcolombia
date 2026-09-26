@@ -76,6 +76,7 @@ Si la empresa es nueva en la aplicación, sigue este orden:
 Evalúa el cumplimiento de los estándares mínimos. La Res. 0312 exige hacerla **cada año** y reportarla a la ARL.
 
 1. Escribe el año y pulsa **Iniciar autoevaluación**. El sistema carga automáticamente los estándares que le aplican a la empresa:
+   - **3 estándares**: unidad de producción agropecuaria con 10 o menos trabajadores permanentes y riesgo I, II o III.
    - **7 estándares**: 10 o menos trabajadores y riesgo I, II o III.
    - **21 estándares**: de 11 a 50 trabajadores y riesgo I, II o III.
    - **60 estándares**: más de 50 trabajadores, o riesgo IV o V.
@@ -212,7 +213,7 @@ Al cerrar una acción, registra la fecha de cierre y verifica su **eficacia**. L
 
 Está al final del menú lateral.
 
-- **Datos de la empresa** (solo el administrador): razón social, NIT, CIIU, clase de riesgo, número de trabajadores, ARL, responsable del SG-SST, licencia y otros datos. **La clase de riesgo y el número de trabajadores definen cuántos estándares aplican**, así que mantenlos al día.
+- **Datos de la empresa** (solo el administrador): razón social, NIT, CIIU, clase de riesgo, número de trabajadores, si es unidad de producción agropecuaria, ARL, responsable del SG-SST, licencia y otros datos. **La clase de riesgo, el número de trabajadores y la casilla de unidad agropecuaria definen cuántos estándares aplican**, así que mantenlos al día.
 - **Crear usuario** (solo el administrador): nombre, correo, rol y una contraseña inicial de al menos 10 caracteres. Entrégala a la persona por un medio seguro.
 - **Cambiar mi contraseña** (todos los usuarios): escribe la contraseña actual y la nueva, de al menos 10 caracteres.
 

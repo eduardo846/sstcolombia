@@ -92,6 +92,13 @@ No cargues datos reales ni uses esta instancia para información de salud labora
 
 > Para producción elimina `db/04_demo.sql` **antes** del primer arranque. Los scripts de `db/` solo se ejecutan cuando el volumen `pgdata` está vacío; para reinstalar desde cero: `docker compose down -v`.
 
+### Migraciones de una base existente
+
+Los cambios de esquema para una base ya inicializada van en `db/migraciones/`, con un archivo por cambio, nombrado con fecha (`AAAA-MM-DD_descripcion.sql`). Cada archivo también se refleja en `db/01_schema.sql` a `db/03_api.sql` para que las bases nuevas nazcan actualizadas.
+
+- El workflow **Migrate Render database** corre solo cuando un push a `deployment` toca `db/migraciones/`, y también se puede lanzar a mano. Usa el secreto `RENDER_DATABASE_URL` y anota cada archivo aplicado en `app.migraciones` para no repetirlo.
+- El CI ejecuta cada migración dos veces sobre una base recién creada, así que deben poder correr sin error sobre una base que ya tiene el cambio.
+
 ## Arquitectura
 
 ```
@@ -120,7 +127,7 @@ No hay backend intermedio: la lógica de negocio vive en PostgreSQL (vistas, col
 
 | Ciclo | Módulo | Norma principal |
 |---|---|---|
-| P | Autoevaluación de estándares (7, 21 o 60 según la empresa) | Res. 0312/2019 Arts. 3, 9, 16, 27, 28 |
+| P | Autoevaluación de estándares (3, 7, 21 o 60 según la empresa) | Res. 0312/2019 Arts. 3, 7, 9, 16, 27, 28 |
 | P | Plan anual de trabajo | Estándar 2.4.1 |
 | P | Matriz legal con catálogo base de 37 normas | Estándar 2.7.1 |
 | P | Documentos con retención de 20 años | Dec. 1072 Art. 2.2.4.6.13 |
