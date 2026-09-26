@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../auth.jsx';
 
 export default function Login() {
-  const { login } = useAuth();
+  const { login, motivo } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -22,6 +22,9 @@ export default function Login() {
         <span className="brand-mark big" aria-hidden="true" />
         <h1>Sistema de Gestión de Seguridad y Salud en el Trabajo</h1>
         <p className="norma">Decreto 1072 de 2015 y Resolución 0312 de 2019</p>
+        {motivo === 'inactividad' && !error && (
+          <p className="alert azul" role="status">Tu sesión se cerró tras 10 minutos sin actividad. Ingresa de nuevo.</p>
+        )}
         <div className="field">
           <label htmlFor="email">Correo</label>
           <input id="email" type="email" autoComplete="username" required value={email} onChange={e => setEmail(e.target.value)} />

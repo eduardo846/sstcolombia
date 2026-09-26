@@ -11,7 +11,8 @@ La aplicación organiza el Sistema de Gestión de Seguridad y Salud en el Trabaj
 1. Abre la dirección de la aplicación que te entregó el administrador.
 2. Escribe tu **correo** y tu **contraseña** y pulsa **Ingresar**.
 
-- La sesión dura **8 horas**. Después, la aplicación te pide ingresar de nuevo.
+- La sesión se cierra sola tras **10 minutos sin actividad** (sin mover el mouse, tocar la pantalla ni escribir). Guarda lo que estés editando antes de alejarte del equipo.
+- Aunque haya actividad, la sesión dura como máximo **8 horas**. Después, la aplicación te pide ingresar de nuevo.
 - Si el servidor estuvo inactivo, el primer ingreso puede tardar hasta un minuto. Espera sin recargar la página.
 - Si olvidaste tu contraseña, pide al administrador que te cree un usuario nuevo. La aplicación no envía correos de recuperación.
 

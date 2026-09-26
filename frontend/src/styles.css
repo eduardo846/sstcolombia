@@ -206,6 +206,7 @@ input.mini { padding: .28rem .5rem; font-size: .86rem; margin-top: .3rem; max-wi
 .login-card { position: relative; background: var(--papel); width: min(420px, 100%); padding: 2rem; border-radius: var(--r); border-top: 6px solid var(--verde); }
 .login-card h1 { font-size: 1.5rem; }
 .login-card .norma { margin-bottom: 1.4rem; }
+.login-card .norma + .alert { margin-bottom: 1rem; }
 
 /* ---------- Móvil ---------- */
 @media (max-width: 900px) {
